@@ -52,26 +52,55 @@
     </div>
   </div>
   <q-page-sticky position="bottom-right" :offset="[30, 30]">
-    <q-btn fab icon="pause" color="primary" />
+    <q-btn
+      fab
+      :icon="played ? 'pause' : 'play_arrow'"
+      @click="play"
+      color="primary"
+    />
   </q-page-sticky>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted } from "vue";
+import { throttle } from "quasar";
 import XLSX from "xlsx";
 import db from "../../common/db";
 
 export default {
   setup() {
     const virtualListRef = ref(null);
-    const virtualListIndex = ref(0);
-    const wordList = ref([]);
+    const virtualListIndex = ref(38);
 
+    const wordList = ref([]);
     onMounted(() => {
       db.words.toArray((arr) => (wordList.value = arr));
     });
 
-    onUnmounted(() => {});
+    const played = ref(false);
+    const play = throttle(() => {
+      played.value = !played.value;
+      changeWord();
+    }, 3000);
+    const changeWord = () => {
+      if (virtualListIndex.value === wordList.value.length) {
+        played.value = false;
+        virtualListIndex.value = 0;
+        virtualListRef.value.scrollTo("start");
+      }
+      if (played.value) {
+        console.log(virtualListIndex.value);
+        setTimeout(() => {
+          virtualListRef.value.scrollTo(
+            ++virtualListIndex.value,
+            "center-force"
+          );
+          changeWord();
+        }, 1000);
+      }
+    };
+
+    const stopMinutes = ref(25);
 
     const parseXlsx = (event) => {
       let reader = new FileReader();
@@ -111,6 +140,9 @@ export default {
     };
 
     return {
+      played,
+      play,
+      stopMinutes,
       wordList,
       virtualListRef,
       virtualListIndex,
