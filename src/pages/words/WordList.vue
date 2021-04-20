@@ -70,7 +70,7 @@ import db from "../../common/db";
 export default {
   setup() {
     const virtualListRef = ref(null);
-    const virtualListIndex = ref(38);
+    const virtualListIndex = ref(0);
 
     const wordList = ref([]);
     onMounted(() => {
@@ -86,17 +86,24 @@ export default {
       if (virtualListIndex.value === wordList.value.length) {
         played.value = false;
         virtualListIndex.value = 0;
-        virtualListRef.value.scrollTo("start");
+        virtualListRef.value.scrollTo(0);
       }
       if (played.value) {
-        console.log(virtualListIndex.value);
-        setTimeout(() => {
-          virtualListRef.value.scrollTo(
-            ++virtualListIndex.value,
-            "center-force"
-          );
-          changeWord();
-        }, 1000);
+        virtualListRef.value.scrollTo(virtualListIndex.value, "center-force");
+        const ad = new Audio(
+          "/mp3/beginner2/beginner2_" +
+            wordList.value[virtualListIndex.value].id
+              .toString()
+              .padStart(3, "0") +
+            ".mp3"
+        );
+        ad.addEventListener("ended", (event) => {
+          setTimeout(() => {
+            virtualListIndex.value++;
+            changeWord();
+          }, 1500);
+        });
+        ad.play();
       }
     };
 
