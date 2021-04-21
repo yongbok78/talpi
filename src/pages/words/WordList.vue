@@ -3,7 +3,7 @@
     <q-page-sticky position="top" expand>
       <q-toolbar class="bg-primary glossy">
         <q-select v-model="book" :options="books" label="책"></q-select>
-        <q-select v-model="book" :options="books" label="단계"></q-select>
+        <q-select v-model="step" :options="book.steps" label="단계"></q-select>
         <q-select v-model="book" :options="books" label="세부단계"></q-select>
       </q-toolbar>
     </q-page-sticky>
@@ -87,8 +87,16 @@ export default {
       db.words.toArray((arr) => (wordList.value = arr));
     });
 
-    const book = ref("beginner2");
-    const books = ["beginner", "beginner2"];
+    const books = [
+      { label: "초급편", value: "beginner" },
+      {
+        label: "초급편2",
+        value: "beginner2",
+        steps: [{ label: "1단계" }, { label: "2단계" }],
+      },
+    ];
+    const book = ref(books[1]);
+    const step = ref(books[1].steps[0]);
     const played = ref(false);
     const play = throttle(() => {
       played.value = !played.value;
@@ -159,6 +167,7 @@ export default {
 
     return {
       book,
+      step,
       books,
       played,
       play,
