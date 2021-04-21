@@ -1,62 +1,71 @@
 <template>
-  <div class="q-ma-sm row justify-center">
-    <div class="col">
-      <q-virtual-scroll
-        ref="virtualListRef"
-        component="q-list"
-        :items="wordList"
-        style="max-height: 85vh"
-        separator
-      >
-        <template v-slot="{ item, index }">
-          <q-item :class="{ 'bg-blue-grey': index === virtualListIndex }">
-            <q-item-section>
-              <div class="row items-center">
-                <div class="col-3 text-right" style="padding-right: 15px">
-                  <div>&nbsp;</div>
-                  <div class="text-h5">
-                    {{ item.word }}
+  <q-page-container>
+    <q-page-sticky position="top" expand>
+      <q-toolbar class="bg-primary glossy">
+        <q-select v-model="book" :options="books" label="책"></q-select>
+        <q-select v-model="book" :options="books" label="단계"></q-select>
+        <q-select v-model="book" :options="books" label="세부단계"></q-select>
+      </q-toolbar>
+    </q-page-sticky>
+    <div class="q-ma-sm row justify-center">
+      <div class="col">
+        <q-virtual-scroll
+          ref="virtualListRef"
+          component="q-list"
+          :items="wordList"
+          style="max-height: 85vh"
+          separator
+        >
+          <template v-slot="{ item, index }">
+            <q-item :class="{ 'bg-blue-grey': index === virtualListIndex }">
+              <q-item-section>
+                <div class="row items-center">
+                  <div class="col-3 text-right" style="padding-right: 15px">
+                    <div>&nbsp;</div>
+                    <div class="text-h5">
+                      {{ item.word }}
+                    </div>
+                    <div class="text-grey-2">{{ item.word2 }}&nbsp;</div>
                   </div>
-                  <div class="text-grey-2">{{ item.word2 }}&nbsp;</div>
-                </div>
-                <div class="col-0">
-                  <q-btn round size="xs" color="grey-6">
-                    {{ item.partOfSpeech }}
-                  </q-btn>
-                </div>
-                <div class="col" style="padding-left: 35px">
-                  <div>{{ item.class }} {{ item.hint }}&nbsp;</div>
-                  <div class="text-h5">
-                    {{ item.meaning }}
+                  <div class="col-0">
+                    <q-btn round size="xs" color="grey-8">
+                      {{ item.partOfSpeech }}
+                    </q-btn>
                   </div>
-                  <div>{{ item.meaning2 }}&nbsp;</div>
+                  <div class="col" style="padding-left: 35px">
+                    <div>{{ item.class }} {{ item.hint }}&nbsp;</div>
+                    <div class="text-h5">
+                      {{ item.meaning }}
+                    </div>
+                    <div>{{ item.meaning2 }}&nbsp;</div>
+                  </div>
                 </div>
-              </div>
-            </q-item-section>
-          </q-item>
-        </template>
-      </q-virtual-scroll>
+              </q-item-section>
+            </q-item>
+          </template>
+        </q-virtual-scroll>
+      </div>
     </div>
-  </div>
-  <div class="row">
-    <div class="col">
-      <q-file
-        label="엑셀파일 변환"
-        filled
-        style="max-width: 300px"
-        accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        @change="parseXlsx"
+    <div class="row">
+      <div class="col">
+        <q-file
+          label="엑셀파일 변환"
+          filled
+          style="max-width: 300px"
+          accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          @change="parseXlsx"
+        />
+      </div>
+    </div>
+    <q-page-sticky position="bottom-right" :offset="[30, 30]">
+      <q-btn
+        fab
+        :icon="played ? 'pause' : 'play_arrow'"
+        @click="play"
+        color="primary"
       />
-    </div>
-  </div>
-  <q-page-sticky position="bottom-right" :offset="[30, 30]">
-    <q-btn
-      fab
-      :icon="played ? 'pause' : 'play_arrow'"
-      @click="play"
-      color="primary"
-    />
-  </q-page-sticky>
+    </q-page-sticky>
+  </q-page-container>
 </template>
 
 <script>
@@ -69,14 +78,17 @@ import { useQuasar } from "quasar";
 export default {
   setup() {
     useQuasar().dark.set(true);
+
     const virtualListRef = ref(null);
-    const virtualListIndex = ref(0);
+    const virtualListIndex = ref(-1);
 
     const wordList = ref([]);
     onMounted(() => {
       db.words.toArray((arr) => (wordList.value = arr));
     });
 
+    const book = ref("beginner2");
+    const books = ["beginner", "beginner2"];
     const played = ref(false);
     const play = throttle(() => {
       played.value = !played.value;
@@ -85,11 +97,11 @@ export default {
     const changeWord = () => {
       if (virtualListIndex.value === wordList.value.length) {
         played.value = false;
-        virtualListIndex.value = 0;
+        virtualListIndex.value = -1;
         virtualListRef.value.scrollTo(0);
       }
       if (played.value) {
-        virtualListRef.value.scrollTo(virtualListIndex.value, "center-force");
+        virtualListRef.value.scrollTo(++virtualListIndex.value, "center-force");
         const ad = new Audio(
           "/mp3/beginner2/beginner2_" +
             wordList.value[virtualListIndex.value].id
@@ -99,7 +111,6 @@ export default {
         );
         ad.addEventListener("ended", (event) => {
           setTimeout(() => {
-            virtualListIndex.value++;
             changeWord();
           }, 1500);
         });
@@ -147,6 +158,8 @@ export default {
     };
 
     return {
+      book,
+      books,
       played,
       play,
       stopMinutes,
@@ -161,7 +174,7 @@ export default {
 
 <style scoped lang="scss">
 .q-item div {
-  color: $grey-9;
+  color: $grey-10;
 }
 .q-item.bg-blue-grey div {
   color: white;
