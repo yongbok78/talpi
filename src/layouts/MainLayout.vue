@@ -11,7 +11,7 @@
           @click="toggleLeftDrawer"
         />
 
-        <q-toolbar-title> 영어탈피 </q-toolbar-title>
+        <q-toolbar-title>탈피</q-toolbar-title>
 
         <div>버튼 넣을 자리</div>
       </q-toolbar>

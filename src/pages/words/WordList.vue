@@ -9,29 +9,27 @@
         separator
       >
         <template v-slot="{ item, index }">
-          <q-item :class="{ 'shadow-24': index === virtualListIndex }">
+          <q-item :class="{ 'bg-blue-grey': index === virtualListIndex }">
             <q-item-section>
               <div class="row items-center">
                 <div class="col-3 text-right" style="padding-right: 15px">
                   <div>&nbsp;</div>
-                  <div class="text-h6 text-pink">
+                  <div class="text-h5">
                     {{ item.word }}
                   </div>
-                  <div class="text-grey-6">{{ item.word2 }}&nbsp;</div>
+                  <div class="text-grey-2">{{ item.word2 }}&nbsp;</div>
                 </div>
                 <div class="col-0">
-                  <q-btn round size="xs" color="pink-3">
+                  <q-btn round size="xs" color="grey-6">
                     {{ item.partOfSpeech }}
                   </q-btn>
                 </div>
                 <div class="col" style="padding-left: 35px">
-                  <div class="text-pink-2">
-                    {{ item.class }} {{ item.hint }}&nbsp;
-                  </div>
-                  <div class="text-h6 text-pink">
+                  <div>{{ item.class }} {{ item.hint }}&nbsp;</div>
+                  <div class="text-h5">
                     {{ item.meaning }}
                   </div>
-                  <div class="text-grey-6">{{ item.meaning2 }}&nbsp;</div>
+                  <div>{{ item.meaning2 }}&nbsp;</div>
                 </div>
               </div>
             </q-item-section>
@@ -66,9 +64,11 @@ import { ref, onMounted } from "vue";
 import { throttle } from "quasar";
 import XLSX from "xlsx";
 import db from "../../common/db";
+import { useQuasar } from "quasar";
 
 export default {
   setup() {
+    useQuasar().dark.set(true);
     const virtualListRef = ref(null);
     const virtualListIndex = ref(0);
 
@@ -158,3 +158,12 @@ export default {
   },
 };
 </script>
+
+<style scoped lang="scss">
+.q-item div {
+  color: $grey-9;
+}
+.q-item.bg-blue-grey div {
+  color: white;
+}
+</style>
