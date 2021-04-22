@@ -1,71 +1,63 @@
 <template>
-  <q-page-container>
-    <q-page-sticky position="top" expand>
-      <q-toolbar class="bg-primary glossy">
-        <q-select v-model="book" :options="books" label="책"></q-select>
-        <q-select v-model="step" :options="book.steps" label="단계"></q-select>
-        <q-select v-model="book" :options="books" label="세부단계"></q-select>
-      </q-toolbar>
-    </q-page-sticky>
-    <div class="q-ma-sm row justify-center">
-      <div class="col">
-        <q-virtual-scroll
-          ref="virtualListRef"
-          component="q-list"
-          :items="wordList"
-          style="max-height: 85vh"
-          separator
-        >
-          <template v-slot="{ item, index }">
-            <q-item :class="{ 'bg-blue-grey': index === virtualListIndex }">
-              <q-item-section>
-                <div class="row items-center">
-                  <div class="col-3 text-right" style="padding-right: 15px">
-                    <div>&nbsp;</div>
-                    <div class="text-h5">
-                      {{ item.word }}
-                    </div>
-                    <div class="text-grey-2">{{ item.word2 }}&nbsp;</div>
+  <q-toolbar class="bg-primary glossy">
+    <q-select v-model="book" :options="books" label="책"></q-select>
+    <q-select v-model="step" :options="book.steps" label="단계"></q-select>
+    <q-select v-model="book" :options="books" label="세부단계"></q-select>
+    <q-select v-model="difficulty" :options="difficultys" label="난이도"></q-select>
+  </q-toolbar>
+  <div class="q-ma-sm row justify-center">
+    <div class="col">
+      <q-virtual-scroll
+        ref="virtualListRef"
+        component="q-list"
+        :items="wordList"
+        style="max-height: 85vh"
+        separator
+      >
+        <template v-slot="{ item, index }">
+          <q-item :class="{ 'bg-blue-grey': index === virtualListIndex }">
+            <q-item-section>
+              <div class="row items-center">
+                <div class="col-3 text-right" style="padding-right: 15px">
+                  <div>&nbsp;</div>
+                  <div class="text-h5">
+                    {{ item.word }}
                   </div>
-                  <div class="col-0">
-                    <q-btn round size="xs" color="grey-8">
-                      {{ item.partOfSpeech }}
-                    </q-btn>
-                  </div>
-                  <div class="col" style="padding-left: 35px">
-                    <div>{{ item.class }} {{ item.hint }}&nbsp;</div>
-                    <div class="text-h5">
-                      {{ item.meaning }}
-                    </div>
-                    <div>{{ item.meaning2 }}&nbsp;</div>
-                  </div>
+                  <div class="text-grey-2">{{ item.word2 }}&nbsp;</div>
                 </div>
-              </q-item-section>
-            </q-item>
-          </template>
-        </q-virtual-scroll>
-      </div>
+                <div class="col-0">
+                  <q-btn round size="xs" color="grey-8">
+                    {{ item.partOfSpeech }}
+                  </q-btn>
+                </div>
+                <div class="col" style="padding-left: 35px">
+                  <div>{{ item.class }} {{ item.hint }}&nbsp;</div>
+                  <div class="text-h5">
+                    {{ item.meaning }}
+                  </div>
+                  <div>{{ item.meaning2 }}&nbsp;</div>
+                </div>
+              </div>
+            </q-item-section>
+          </q-item>
+        </template>
+      </q-virtual-scroll>
     </div>
-    <div class="row">
-      <div class="col">
-        <q-file
-          label="엑셀파일 변환"
-          filled
-          style="max-width: 300px"
-          accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          @change="parseXlsx"
-        />
-      </div>
-    </div>
-    <q-page-sticky position="bottom-right" :offset="[30, 30]">
-      <q-btn
-        fab
-        :icon="played ? 'pause' : 'play_arrow'"
-        @click="play"
-        color="primary"
+  </div>
+  <div class="row">
+    <div class="col">
+      <q-file
+        label="엑셀파일 변환"
+        filled
+        style="max-width: 300px"
+        accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        @change="parseXlsx"
       />
-    </q-page-sticky>
-  </q-page-container>
+    </div>
+  </div>
+  <q-page-sticky position="bottom-right" :offset="[30, 30]">
+    <q-btn fab :icon="played ? 'pause' : 'play_arrow'" @click="play" color="primary" />
+  </q-page-sticky>
 </template>
 
 <script>
@@ -95,7 +87,14 @@ export default {
         steps: [{ label: "1단계" }, { label: "2단계" }],
       },
     ];
+    const difficultys = [
+      { label: "전체", value: 0 },
+      { label: "쉬움", value: 1 },
+      { label: "어려움", value: 2 },
+      { label: "핵심", value: 3 },
+    ];
     const book = ref(books[1]);
+    const difficulty = ref(difficultys[1]);
     const step = ref(books[1].steps[0]);
     const played = ref(false);
     const play = throttle(() => {
@@ -112,9 +111,7 @@ export default {
         virtualListRef.value.scrollTo(++virtualListIndex.value, "center-force");
         const ad = new Audio(
           "/mp3/beginner2/beginner2_" +
-            wordList.value[virtualListIndex.value].id
-              .toString()
-              .padStart(3, "0") +
+            wordList.value[virtualListIndex.value].id.toString().padStart(3, "0") +
             ".mp3"
         );
         ad.addEventListener("ended", (event) => {
@@ -169,6 +166,8 @@ export default {
       book,
       step,
       books,
+      difficulty,
+      difficultys,
       played,
       play,
       stopMinutes,
