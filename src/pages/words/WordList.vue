@@ -3,8 +3,15 @@
     <q-select v-model="book" :options="books" label="책"></q-select>
     <q-select v-model="step" :options="steps" label="단계"></q-select>
     <q-select v-model="difficulty" :options="difficultys" label="난이도"></q-select>
+    <q-input
+      label="재생 간격"
+      v-model.number="timeInterval"
+      type="number"
+      step="0.25"
+      min="0.5"
+    />
   </q-toolbar>
-  <div class="q-ma-sm row justify-center">
+  <div class="q-ma-sm row justify-center" @keypress.prevent="cnt">
     <div class="col">
       <q-virtual-scroll
         ref="virtualListRef"
@@ -68,6 +75,8 @@ import { useQuasar } from "quasar";
 
 export default {
   setup() {
+    useQuasar().dark.set(true);
+
     const books = [
       { label: "초급편", value: "beginner" },
       {
@@ -95,38 +104,61 @@ export default {
       { label: "쉬움", value: 1 },
       { label: "어려움", value: 2 },
       { label: "핵심", value: 3 },
+      { label: "비핵심", value: 4 },
     ];
     const book = ref(books[1]);
     const step = ref(steps[3]);
     const difficulty = ref(difficultys[1]);
-
-    useQuasar().dark.set(true);
+    const timeInterval = ref(1.5);
 
     const virtualListRef = ref(null);
-    const virtualListIndex = ref(38);
+    const virtualListIndex = ref(0);
 
     const wordList = ref([]);
-    onMounted(() => {
-      db.words.toArray((arr) => (wordList.value = arr));
+    const selectWords = async () => {
+      const diff = difficulty.value.value;
+      if (diff !== 0) {
+        let w = {};
+        w[/[12]/.test(diff.toString()) ? "isHard" : "isCore"] = /[23]/.test(
+          diff.toString()
+        )
+          ? "Y"
+          : "N";
+        return db.words.where(w).sortBy(`${book.value.value}_loc`);
+      }
+      return await db.words.toCollection().sortBy(`${book.value.value}_loc`);
+    };
+    watch([book, difficulty], async () => {
+      wordList.value = await selectWords();
+    });
+    onMounted(async () => {
+      wordList.value = await selectWords();
     });
 
     const played = ref(false);
     const play = throttle(() => {
       played.value = !played.value;
-      changeWord();
+      talkWords();
     }, 3000);
 
-    let playInterval = 0;
-    watch(played, (played) => {
-      if (played) {
-        tellWord(wordList[virtualListIndex.value].id).then(() => {
-          playInterval = setInterval(() => {}, 1500);
-        });
-      } else {
-        clearInterval(playInterval);
+    const talkWords = async () => {
+      if (played.value) {
+        try {
+          await talkWord(wordList.value[virtualListIndex.value].id);
+          while (played.value) {
+            virtualListRef.value.scrollTo(++virtualListIndex.value, "center-force");
+            await talkWord(wordList.value[virtualListIndex.value].id);
+          }
+        } catch (e) {
+          console.log(e);
+          played.value = false;
+          virtualListIndex.value = 0;
+          virtualListRef.value.scrollTo(0);
+        }
       }
-    });
-    const tellWord = (id) => {
+    };
+
+    const talkWord = (id) => {
       return new Promise((res, rej) => {
         try {
           const ad = new Audio(
@@ -138,11 +170,11 @@ export default {
           ad.addEventListener("ended", (event) => {
             setTimeout(() => {
               res();
-            }, 1500);
+            }, timeInterval.value * 1000);
           });
           ad.play();
         } catch (err) {
-          rej();
+          rej(err);
         }
       });
     };
@@ -154,7 +186,9 @@ export default {
       reader.onload = (e) => {
         let data = new Uint8Array(e.target.result);
         let wb = XLSX.read(data, { type: "array" });
-        let rslt = XLSX.utils.sheet_to_json(wb.Sheets["beginner2"]);
+        let rslt = XLSX.utils
+          .sheet_to_json(wb.Sheets["beginner2"])
+          .filter((o) => o.meaning);
 
         const toId = (s) => {
           let ss = s.split("-");
@@ -167,21 +201,18 @@ export default {
           for (let k in o) {
             o[k] = o[k].trim().replace(/:/g, "·");
           }
-          o.isHard = o.isHard === "Y";
-          o.isCore = o.isCore === "Y";
+          if ((o.isHard || "") === "") o.isHard = "N";
+          if ((o.isCore || "") === "") o.isCore = "N";
           o.beginner_loc = toId(o.beginner_loc);
           o.beginner2_loc = toId(o.beginner2_loc);
           o.id = i;
         }
 
-        db.words.clear().then(() => {
-          db.words.bulkAdd(rslt).then(() => {
-            db.words.toArray((arr) => {
-              console.log(arr);
-              wordList.value = arr;
-            });
-          });
-        });
+        db.words
+          .clear()
+          .then(() => db.words.bulkAdd(rslt))
+          .then(selectWords)
+          .then((arr) => (wordList.value = arr));
       };
       reader.readAsArrayBuffer(event.target.files[0]);
     };
@@ -193,6 +224,7 @@ export default {
       steps,
       difficulty,
       difficultys,
+      timeInterval,
       played,
       play,
       stopMinutes,
@@ -200,6 +232,7 @@ export default {
       virtualListRef,
       virtualListIndex,
       parseXlsx,
+      cnt: () => alert("test"),
     };
   },
 };
