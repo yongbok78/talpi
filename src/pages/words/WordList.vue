@@ -150,10 +150,10 @@ export default {
             await talkWord(wordList.value[virtualListIndex.value].id);
           }
         } catch (e) {
-          console.log(e);
           played.value = false;
           virtualListIndex.value = 0;
           virtualListRef.value.scrollTo(0);
+          console.log(e);
         }
       }
     };
@@ -161,16 +161,15 @@ export default {
     const talkWord = (id) => {
       return new Promise((res, rej) => {
         try {
-          const ad = new Audio(
-            `/mp3/${book.value.value}/${book.value.value}_${id
-              .toString()
-              .padStart(3, "0")}.mp3`
-          );
+          const ad = new Audio(`/mp3/beginner2/${id.toString().padStart(5, "0")}.mp3`);
 
           ad.addEventListener("ended", (event) => {
             setTimeout(() => {
               res();
             }, timeInterval.value * 1000);
+          });
+          ad.addEventListener("error", (event) => {
+            rej(event);
           });
           ad.play();
         } catch (err) {
