@@ -45,7 +45,7 @@
                   <div class="text-h5">
                     {{ item.word }}
                   </div>
-                  <div class="text-grey-2">{{ item.word2 }}&nbsp;</div>
+                  <div>{{ item.word2 }}&nbsp;</div>
                 </div>
                 <div class="col-0">
                   <q-btn round size="xs" color="grey-8">
@@ -153,8 +153,16 @@ export default {
     });
 
     const played = ref(false);
+    let playTimeoutId = 0;
     const play = throttle(() => {
       played.value = !played.value;
+      if (played.value) {
+        playTimeoutId = setTimeout(() => {
+          played.value = false;
+        }, playMinutes.value * 60000);
+      } else {
+        clearTimeout(playTimeoutId);
+      }
       talkWords();
     }, 3000);
 
