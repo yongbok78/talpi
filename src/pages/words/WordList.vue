@@ -1,14 +1,30 @@
 <template>
   <q-toolbar class="bg-primary glossy">
-    <q-select v-model="book" :options="books" label="책"></q-select>
-    <q-select v-model="step" :options="steps" label="단계"></q-select>
-    <q-select v-model="difficulty" :options="difficultys" label="난이도"></q-select>
+    <q-select v-model="book" :options="books" label="책" class="col-1"></q-select>
+    <q-select v-model="step" :options="steps" label="단계" class="col-1"></q-select>
+    <q-select
+      v-model="difficulty"
+      :options="difficultys"
+      label="난이도"
+      class="col-1"
+    ></q-select>
+    <q-toolbar-title></q-toolbar-title>
     <q-input
-      label="재생 간격"
-      v-model.number="timeInterval"
+      label="재생 시간"
+      hint="분"
+      v-model.number="playMinutes"
+      type="number"
+      min="1"
+      class="col-1"
+    />
+    <q-input
+      label="단어 간격"
+      hint="초"
+      v-model.number="wordInterval"
       type="number"
       step="0.25"
       min="0.5"
+      class="col-1"
     />
   </q-toolbar>
   <div class="q-ma-sm row justify-center" @keypress.prevent="cnt">
@@ -109,7 +125,8 @@ export default {
     const book = ref(books[1]);
     const step = ref(steps[3]);
     const difficulty = ref(difficultys[1]);
-    const timeInterval = ref(1.5);
+    const playMinutes = ref(25);
+    const wordInterval = ref(1.5);
 
     const virtualListRef = ref(null);
     const virtualListIndex = ref(0);
@@ -166,7 +183,7 @@ export default {
           ad.addEventListener("ended", (event) => {
             setTimeout(() => {
               res();
-            }, timeInterval.value * 1000);
+            }, wordInterval.value * 1000);
           });
           ad.addEventListener("error", (event) => {
             rej(event);
@@ -177,8 +194,6 @@ export default {
         }
       });
     };
-
-    const stopMinutes = ref(25);
 
     const parseXlsx = (event) => {
       let reader = new FileReader();
@@ -223,10 +238,10 @@ export default {
       steps,
       difficulty,
       difficultys,
-      timeInterval,
+      playMinutes,
+      wordInterval,
       played,
       play,
-      stopMinutes,
       wordList,
       virtualListRef,
       virtualListIndex,
