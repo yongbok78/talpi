@@ -27,7 +27,12 @@
       class="col-1"
     />
   </q-toolbar>
-  <div class="q-ma-sm row justify-center" @keypress.prevent="cnt">
+  <div
+    ref="listRef"
+    tabindex="0"
+    class="q-ma-sm row justify-center"
+    @keypress.prevent="cnt"
+  >
     <div class="col">
       <q-virtual-scroll
         ref="virtualListRef"
@@ -91,7 +96,8 @@ import { useQuasar } from "quasar";
 
 export default {
   setup() {
-    useQuasar().dark.set(true);
+    const $q = useQuasar();
+    $q.dark.set(true);
 
     const books = [
       { label: "초급편", value: "beginner" },
@@ -128,6 +134,7 @@ export default {
     const playMinutes = ref(25);
     const wordInterval = ref(1.5);
 
+    const listRef = ref(null);
     const virtualListRef = ref(null);
     const virtualListIndex = ref(0);
 
@@ -157,6 +164,7 @@ export default {
     const play = throttle(() => {
       played.value = !played.value;
       if (played.value) {
+        listRef.value.focus();
         playTimeoutId = setTimeout(() => {
           played.value = false;
         }, playMinutes.value * 60000);
@@ -253,8 +261,12 @@ export default {
       wordList,
       virtualListRef,
       virtualListIndex,
+      listRef,
       parseXlsx,
-      cnt: () => alert("test"),
+      cnt() {
+        console.log(listRef.value);
+        $q.notify(wordList.value[virtualListIndex.value].word);
+      },
     };
   },
 };
