@@ -1,9 +1,9 @@
 <template>
   <q-item
     clickable
-    v-ripple
-    active
-    to="/words"
+    tag="a"
+    target="_blank"
+    :href="link"
   >
     <q-item-section
       v-if="icon"

@@ -13,8 +13,8 @@ import EssentialLink from "components/EssentialLink.vue";
 
 const linksList = [
   {
-    title: "ì´ˆê¸‰íŽ¸",
-    caption: "íŠ¹í—ˆ2ë²„ì „",
+    title: "ÃÊ±ÞÆí",
+    caption: "Æ¯Çã2¹öÀü",
     icon: "looks_two",
     link: "/",
   },
@@ -23,7 +23,7 @@ const linksList = [
 import { defineComponent, ref } from "vue";
 
 export default defineComponent({
-  name: "íƒˆí”¼",
+  name: "Å»ÇÇ",
 
   setup() {
     return {};
