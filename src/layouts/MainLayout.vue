@@ -1,29 +1,12 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-    <q-page-container>
-      <q-page>
-        <router-view />
-      </q-page>
-    </q-page-container>
-  </q-layout>
+  <router-view />
 </template>
 
 <script>
-import EssentialLink from "components/EssentialLink.vue";
-
-const linksList = [
-  {
-    title: "ÃÊ±ÞÆí",
-    caption: "Æ¯Çã2¹öÀü",
-    icon: "looks_two",
-    link: "/",
-  },
-];
-
-import { defineComponent, ref } from "vue";
+import { defineComponent } from "vue";
 
 export default defineComponent({
-  name: "Å»ÇÇ",
+  name: "íƒˆí”¼",
 
   setup() {
     return {};

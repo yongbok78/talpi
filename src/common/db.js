@@ -2,7 +2,254 @@ import Dexie from "dexie";
 
 const db = new Dexie("talpi");
 db.version(1).stores({
-  words: `&id, word, word2, partOfSpeech, hint, meaning, meaning2, &beginner_loc, &beginner2_loc, isHard, isCore`,
+  configs: `&id, [group+book+step+difficulty], playMinutes, wordGap, currentIndex`,
+  words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, isHard, isCore`
 });
+
+db.configs.bulkPut([{
+  id: 1,
+  group: "default",
+  book: "beginner",
+  step: "1-1",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 2,
+  group: "default",
+  book: "beginner",
+  step: "1-2",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 3,
+  group: "default",
+  book: "beginner",
+  step: "1-3",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 4,
+  group: "default",
+  book: "beginner",
+  step: "1-4",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 5,
+  group: "default",
+  book: "beginner",
+  step: "1-5",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 6,
+  group: "default",
+  book: "beginner",
+  step: "1-6",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 7,
+  group: "default",
+  book: "beginner",
+  step: "2-1",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 8,
+  group: "default",
+  book: "beginner",
+  step: "2-2",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 9,
+  group: "default",
+  book: "beginner",
+  step: "2-2a",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 10,
+  group: "default",
+  book: "beginner",
+  step: "2-3",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 11,
+  group: "default",
+  book: "beginner",
+  step: "2-4",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 12,
+  group: "default",
+  book: "beginner",
+  step: "2-5",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 13,
+  group: "default",
+  book: "beginner",
+  step: "k-e",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 14,
+  group: "default",
+  book: "beginner2",
+  step: "1-1",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 15,
+  group: "default",
+  book: "beginner2",
+  step: "1-2",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 16,
+  group: "default",
+  book: "beginner2",
+  step: "1-3",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 17,
+  group: "default",
+  book: "beginner2",
+  step: "1-4",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 18,
+  group: "default",
+  book: "beginner2",
+  step: "1-5",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 19,
+  group: "default",
+  book: "beginner2",
+  step: "1-6",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 20,
+  group: "default",
+  book: "beginner2",
+  step: "2-1",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 21,
+  group: "default",
+  book: "beginner2",
+  step: "2-2",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 22,
+  group: "default",
+  book: "beginner2",
+  step: "2-2a",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 23,
+  group: "default",
+  book: "beginner2",
+  step: "2-3",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 24,
+  group: "default",
+  book: "beginner2",
+  step: "2-4",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 25,
+  group: "default",
+  book: "beginner2",
+  step: "2-5",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}, {
+  id: 26,
+  group: "default",
+  book: "beginner2",
+  step: "k-e",
+  difficulty: 0,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+}]).then(console.log).catch(console.log)
+db.configs.add({
+  id: 27,
+  group: "last",
+  book: "beginner2",
+  step: "1-4",
+  difficulty: 1,
+  playMinutes: 25,
+  wordGap: 1.5,
+  currentIndex: 0
+})
 
 export default db;
