@@ -2,10 +2,10 @@
   <q-layout view="lhh LpR lff" container style="height: 100vh">
     <q-header>
       <q-toolbar class="bg-primary glossy">
-        <q-select v-model="book" :options="books" label="책" class="col-1"></q-select>
-        <q-select v-model="step" :options="steps" label="단계" class="col-1"></q-select>
+        <q-select v-model="obBook" :options="books" label="책" class="col-1"></q-select>
+        <q-select v-model="obStep" :options="steps" label="단계" class="col-1"></q-select>
         <q-select
-          v-model="difficulty"
+          v-model="obDifficulty"
           :options="difficultys"
           label="난이도"
           class="col-1"
@@ -16,7 +16,7 @@
           hint="분"
           v-model.number="playMinutes"
           type="number"
-          min="1"
+          min="0"
           class="col-1"
         />
         <q-input
@@ -75,17 +75,16 @@
                         size="xs"
                         color="grey-8"
                         v-show="checkDisplay.partOfSpeech"
+                        >{{ item.partOfSpeech }}</q-btn
                       >
-                        {{ item.partOfSpeech }}
-                      </q-btn>
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div>
-                        <span v-show="checkDisplay.category"
-                          >{{
+                        <span v-show="checkDisplay.category">
+                          {{
                             item.category || "" !== "" ? `[${item.category}]` : ""
-                          }}&nbsp;</span
-                        >
+                          }}&nbsp;
+                        </span>
                         <span v-show="checkDisplay.hint">{{ item.hint }}&nbsp;</span
                         >&nbsp;
                       </div>
@@ -123,18 +122,15 @@
                         size="xs"
                         color="grey-8"
                         v-show="display.default.partOfSpeech"
+                        >{{ item.partOfSpeech }}</q-btn
                       >
-                        {{ item.partOfSpeech }}
-                      </q-btn>
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div>
-                        <span v-show="display.default.category"
-                          >{{
-                            item.category || "" !== "" ? `[${item.category}]` : ""
-                          }}&nbsp;</span
-                        >
-                        <span v-show="display.default.hint">{{ item.hint }}&nbsp;</span
+                        <span v-show="display.default.category">
+                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
+                        </span>
+                        <span v-show="display.default.hint">{{ item.hint }}</span
                         >&nbsp;
                       </div>
                       <div class="text-h5">
@@ -188,7 +184,7 @@
 </template>
 
 <script>
-import { ref, onBeforeMount, onMounted, watch, reactive, computed } from "vue";
+import { ref, toRefs, onBeforeMount, onMounted, watch, reactive, computed } from "vue";
 import { throttle } from "quasar";
 import XLSX from "xlsx";
 import db from "../../common/db";
@@ -204,40 +200,83 @@ export default {
     const steps = options.steps;
     const difficultys = options.difficultys;
 
-    const book = ref(books[0]);
-    const step = ref(steps[0]);
-    const difficulty = ref(difficultys[0]);
-    const playMinutes = ref(0);
-    const wordGap = ref(0);
-    const currentIndex = ref(0);
-
-    watch([book, difficulty], async () => {
-      wordList.value = await selectWords();
+    const defaultConfig = reactive({
+      id: 1,
+      group: "default",
+      book: books[0].value,
+      step: steps[0].value,
+      difficulty: difficultys[0].value,
+      playMiliseconds: 1500000,
+      wordGap: 1.5,
+      currentIndex: 0,
     });
-
-    let lastConfigId;
-    watch([book, step, difficulty, playMinutes, wordGap, currentIndex], () => {
-      db.configs.put({
-        id: lastConfigId,
-        group: "last",
-        book: book.value.value,
-        step: step.value.value,
-        difficulty: difficulty.value.value,
-        playMinutes: playMinutes.value,
-        wordGap: wordGap.value,
-        currentIndex: currentIndex.value,
-      });
+    const config = reactive({
+      id: 131,
+      group: "last",
+      book: books[0].value,
+      step: steps[0].value,
+      difficulty: difficultys[0].value,
+      playMiliseconds: 1500000,
+      wordGap: 1.5,
+      currentIndex: 0,
+    });
+    const { book, step, difficulty, playMiliseconds, wordGap, currentIndex } = toRefs(
+      config
+    );
+    const obBook = computed({
+      get: () => books.find((o) => o.value === config.book),
+      set: (o) => (config.book = o.value),
+    });
+    const obStep = computed({
+      get: () => steps.find((o) => o.value === config.step),
+      set: (o) => (config.step = o.value),
+    });
+    const obDifficulty = computed({
+      get: () => difficultys.find((o) => o.value === config.difficulty),
+      set: (o) => (config.difficulty = o.value),
+    });
+    const playMinutes = computed({
+      get: () => Math.floor(playMiliseconds.value / 60000),
+      set: (val) => {
+        const m = val * 60000;
+        if (m === playMiliseconds.value) return;
+        if (m > playMiliseconds.value) playMiliseconds.value += 60000;
+        else playMiliseconds.value -= 60000;
+      },
     });
     onBeforeMount(async () => {
-      const d = await db.configs.where("group").equals("last").last();
-      lastConfigId = d.id;
-      book.value = books.filter((o) => o.value === d.book)[0];
-      step.value = steps.filter((o) => o.value === d.step)[0];
-      difficulty.value = difficultys.filter((o) => o.value === d.difficulty)[0];
-      playMinutes.value = d.playMinutes;
-      wordGap.value = d.wordGap;
-      currentIndex.value = d.currentIndex;
+      let c = await db.configs.get({ id: config.id });
+      if (!c) {
+        c = await db.configs.get({
+          group: "default",
+          book: config.book,
+          step: config.step,
+          difficulty: config.difficulty,
+        });
+        c.id = config.id;
+        c.group = "last";
+      }
+      for (let k in c) {
+        config[k] = c[k];
+      }
+      c = await db.configs.get({
+        group: "default",
+        book: c.book,
+        step: c.step,
+        difficulty: c.difficulty,
+      });
+      for (let k in c) defaultConfig[k] = c[k];
     });
+    watch([book, step, difficulty], async (a) => {
+      const c = await db.configs.get({
+        group: "default",
+        book: a[0],
+        step: a[1],
+        difficulty: a[2],
+      });
+      for (let k in c) defaultConfig[k] = c[k];
+    });
+    watch(config, async (v) => await db.configs.put(Object.assign({}, v)));
 
     const display = reactive({
       default: {
@@ -279,7 +318,7 @@ export default {
 
     const wordList = ref([]);
     const selectWords = async () => {
-      const diff = difficulty.value.value;
+      const diff = config.difficulty;
       let col;
       // 일부 조회
       if (diff !== 0) {
@@ -292,8 +331,11 @@ export default {
         col = db.words.where(w);
       } else col = db.words.toCollection();
       // 전체 조회
-      return await col.sortBy(`${book.value.value}_loc`);
+      return await col.sortBy(`${book.value}_loc`);
     };
+    watch([book, difficulty], async () => {
+      wordList.value = await selectWords();
+    });
     watch(wordList, () => {
       setTimeout(gotoIndex, 50);
     });
@@ -307,16 +349,8 @@ export default {
       virtualListRef.value.scrollTo(idx, "center-force");
     };
     const played = ref(false);
-    let playTimeoutId = 0;
     const play = throttle(() => {
       played.value = !played.value;
-      if (played.value) {
-        playTimeoutId = setTimeout(() => {
-          played.value = false;
-        }, playMinutes.value * 60000);
-      } else {
-        clearTimeout(playTimeoutId);
-      }
       talkWords();
     }, 3000);
 
@@ -324,10 +358,12 @@ export default {
       if (played.value) {
         try {
           gotoIndex();
-          await talkWord(wordList.value[currentIndex.value].id);
+          playMiliseconds.value -= await talkWord(wordList.value[currentIndex.value].id);
           while (played.value) {
             gotoIndex(++currentIndex.value);
-            await talkWord(wordList.value[currentIndex.value].id);
+            playMiliseconds.value -= await talkWord(
+              wordList.value[currentIndex.value].id
+            );
           }
         } catch (e) {
           played.value = false;
@@ -337,19 +373,22 @@ export default {
         }
       }
     };
+    watch(playMiliseconds, (pm) => {
+      if (pm <= 0) {
+        playMiliseconds.value = 1500000;
+        played.value = false;
+      }
+    });
 
     const talkWord = (id) => {
       return new Promise((res, rej) => {
         try {
           const ad = new Audio(`/mp3/beginner2/${id.toString().padStart(5, "0")}.mp3`);
-          let dura = 0;
           ad.addEventListener("canplay", () => {
-            dura = Math.ceil(ad.duration * 1000);
-          });
-          ad.addEventListener("ended", (event) => {
+            const milis = Math.ceil(ad.duration * 1000) * 2 + wordGap.value * 1000;
             setTimeout(() => {
-              res();
-            }, wordGap.value * 1000 + dura);
+              res(milis);
+            }, milis);
           });
           ad.addEventListener("error", (event) => {
             rej(event);
@@ -405,13 +444,18 @@ export default {
 
     return {
       book,
-      books,
       step,
-      steps,
       difficulty,
+      playMiliseconds,
+      wordGap,
+      currentIndex,
+      obBook,
+      books,
+      obStep,
+      steps,
+      obDifficulty,
       difficultys,
       playMinutes,
-      wordGap,
       display,
       checkDisplay,
       check,
@@ -419,7 +463,6 @@ export default {
       play,
       wordList,
       virtualListRef,
-      currentIndex,
       parseXlsx,
       downXlsx,
       drawerRight: ref(false),
