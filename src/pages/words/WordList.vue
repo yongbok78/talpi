@@ -2,40 +2,87 @@
   <q-layout view="lhh LpR lff" container style="height: 100vh">
     <q-header>
       <q-toolbar class="bg-primary glossy">
-        <q-select v-model="obBook" :options="books" label="책" class="col-1"></q-select>
-        <q-select v-model="obStep" :options="steps" label="단계" class="col-1"></q-select>
-        <q-select
-          v-model="obDifficulty"
-          :options="difficultys"
-          label="난이도"
-          class="col-1"
-        ></q-select>
-        <q-toolbar-title></q-toolbar-title>
-        <q-input
-          label="재생 시간"
-          hint="분"
-          v-model.number="playMinutes"
-          type="number"
-          min="0"
-          class="col-1"
+        <q-toolbar-title>
+          {{ oBook.label }} {{ oStep.label }}단계 {{ oDifficulity.label }}
+          {{ readRound }}회독
+        </q-toolbar-title>
+        단어 간격 : {{ wordGap }}초
+        <q-btn
+          v-if="!played"
+          flat
+          @click="drawerRight = !drawerRight"
+          round
+          dense
+          icon="settings"
         />
-        <q-input
-          label="단어 간격"
-          hint="초"
-          v-model.number="wordGap"
-          type="number"
-          step="0.1"
-          min="-0.5"
-          class="col-1"
-        />
-        <q-btn flat @click="downXlsx" round dense icon="file_download" />
-        <q-btn flat @click="drawerRight = !drawerRight" round dense icon="settings" />
       </q-toolbar>
     </q-header>
     <q-drawer side="right" v-model="drawerRight" bordered :breakpoint="500">
       <q-scroll-area class="fit">
-        <div class="q-pa-sm">
-          <div v-for="n in 50" :key="n">Drawer {{ n }} / 50</div>
+        <div class="q-pa-md">
+          <div class="q-gutter-y-md column">
+            <q-select
+              v-model="oBook"
+              :options="books"
+              label="책"
+              class="col-1"
+            ></q-select>
+            <q-select
+              v-model="oStep"
+              :options="oBook.steps"
+              label="단계"
+              class="col-1"
+            ></q-select>
+            <q-select
+              v-model="oDifficulity"
+              :options="oBook.difficulties"
+              label="난이도"
+              class="col-1"
+            ></q-select>
+            <q-input
+              label="재생 시간"
+              hint="분"
+              v-model.number="playMinutes"
+              type="number"
+              min="0"
+              class="col-1"
+              ref="inputPm"
+            />
+            <q-input
+              label="단어 간격"
+              hint="초"
+              v-model.number="wordGap"
+              type="number"
+              step="0.1"
+              min="-0.5"
+              class="col-1"
+            />
+            <q-input
+              label="회독"
+              v-model.number="readRound"
+              type="number"
+              min="0"
+              class="col-1"
+            />
+            <q-input
+              label="현위치"
+              :hint="currentIndex + '/' + words.length"
+              v-model.number="currentIndex"
+              type="number"
+              min="0"
+              class="col-1"
+            />
+            <q-btn @click="downXlsx" icon="file_download" class="glossy" color="teal"
+              >DB정보 엑셀 다운로드</q-btn
+            >
+            <q-btn
+              @click="initDB"
+              icon="settings_applications"
+              class="glossy"
+              color="accent"
+              >DB정보 초기화</q-btn
+            >
+          </div>
         </div>
       </q-scroll-area>
     </q-drawer>
@@ -45,7 +92,7 @@
           <q-virtual-scroll
             ref="virtualListRef"
             component="q-list"
-            :items="wordList"
+            :items="words"
             separator
             class="col"
             style="height: inherit"
@@ -163,6 +210,9 @@
         </div>
         <q-page-sticky position="bottom-right" :offset="[30, 30]">
           <div class="q-gutter-sm">
+            <q-badge v-show="played" outline align="middle" color="white"
+              >{{ playMinutes }}분 {{ Math.ceil(playMiliseconds / 1000) % 60 }}초</q-badge
+            >
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -174,7 +224,7 @@
               fab
               icon="check"
               color="primary"
-              @click="check = !check"
+              @click="checked = !checked"
             />
           </div>
         </q-page-sticky>
@@ -184,99 +234,53 @@
 </template>
 
 <script>
-import { ref, toRefs, onBeforeMount, onMounted, watch, reactive, computed } from "vue";
-import { throttle } from "quasar";
+import { ref, toRefs, watch, reactive, computed } from "vue";
+import { throttle, useQuasar } from "quasar";
 import XLSX from "xlsx";
-import db from "../../common/db";
-import { useQuasar } from "quasar";
-import options from "../../common/options";
+import {
+  baseStatus,
+  status,
+  books,
+  oBook,
+  oStep,
+  oDifficulity,
+  words,
+  db,
+} from "../../common/db";
 
 export default {
   setup() {
     const $q = useQuasar();
     $q.dark.set(true);
 
-    const books = options.books;
-    const steps = options.steps;
-    const difficultys = options.difficultys;
+    const {
+      book,
+      step,
+      difficulty,
+      playMiliseconds,
+      wordGap,
+      currentIndex,
+      readRound,
+    } = toRefs(status);
 
-    const defaultConfig = reactive({
-      id: 1,
-      group: "default",
-      book: books[0].value,
-      step: steps[0].value,
-      difficulty: difficultys[0].value,
-      playMiliseconds: 1500000,
-      wordGap: 1.5,
-      currentIndex: 0,
-    });
-    const config = reactive({
-      id: 131,
-      group: "last",
-      book: books[0].value,
-      step: steps[0].value,
-      difficulty: difficultys[0].value,
-      playMiliseconds: 1500000,
-      wordGap: 1.5,
-      currentIndex: 0,
-    });
-    const { book, step, difficulty, playMiliseconds, wordGap, currentIndex } = toRefs(
-      config
-    );
-    const obBook = computed({
-      get: () => books.find((o) => o.value === config.book),
-      set: (o) => (config.book = o.value),
-    });
-    const obStep = computed({
-      get: () => steps.find((o) => o.value === config.step),
-      set: (o) => (config.step = o.value),
-    });
-    const obDifficulty = computed({
-      get: () => difficultys.find((o) => o.value === config.difficulty),
-      set: (o) => (config.difficulty = o.value),
-    });
     const playMinutes = computed({
       get: () => Math.floor(playMiliseconds.value / 60000),
       set: (val) => {
-        const m = val * 60000;
-        if (m === playMiliseconds.value) return;
-        if (m > playMiliseconds.value) playMiliseconds.value += 60000;
-        else playMiliseconds.value -= 60000;
+        playMiliseconds.value = val * 60000 + (playMiliseconds.value % 60000);
       },
     });
-    onBeforeMount(async () => {
-      let c = await db.configs.get({ id: config.id });
-      if (!c) {
-        c = await db.configs.get({
-          group: "default",
-          book: config.book,
-          step: config.step,
-          difficulty: config.difficulty,
-        });
-        c.id = config.id;
-        c.group = "last";
+    const inputPm = ref(null);
+    watch(playMiliseconds, (pm) => {
+      if (pm <= 0) {
+        playMiliseconds.value = baseStatus.value.playMiliseconds;
+        played.value = false;
+        inputPm.value.blur();
       }
-      for (let k in c) {
-        config[k] = c[k];
-      }
-      c = await db.configs.get({
-        group: "default",
-        book: c.book,
-        step: c.step,
-        difficulty: c.difficulty,
-      });
-      for (let k in c) defaultConfig[k] = c[k];
     });
-    watch([book, step, difficulty], async (a) => {
-      const c = await db.configs.get({
-        group: "default",
-        book: a[0],
-        step: a[1],
-        difficulty: a[2],
-      });
-      for (let k in c) defaultConfig[k] = c[k];
-    });
-    watch(config, async (v) => await db.configs.put(Object.assign({}, v)));
+
+    const assign = (t, o) => {
+      for (let k of Object.keys(t)) if (o[k] !== undefined) t[k] = o[k];
+    };
 
     const display = reactive({
       default: {
@@ -298,10 +302,10 @@ export default {
         meaning2: false,
       },
     });
-    const check = ref(false);
+    const checked = ref(false);
     const checkDisplay = computed(() => {
       let fcs = Object.assign({}, display.focus);
-      if (check.value) {
+      if (checked.value) {
         for (let k in fcs) {
           fcs[k] = true;
         }
@@ -310,60 +314,66 @@ export default {
       }
       return fcs;
     });
-    watch([currentIndex], () => {
-      if (check.value) check.value = !check.value;
-    });
 
     const virtualListRef = ref(null);
 
-    const wordList = ref([]);
-    const selectWords = async () => {
-      const diff = config.difficulty;
-      let col;
-      // 일부 조회
-      if (diff !== 0) {
-        let w = {};
-        w[/[12]/.test(diff.toString()) ? "isHard" : "isCore"] = /[23]/.test(
-          diff.toString()
-        )
-          ? "Y"
-          : "N";
-        col = db.words.where(w);
-      } else col = db.words.toCollection();
-      // 전체 조회
-      return await col.sortBy(`${book.value}_loc`);
-    };
-    watch([book, difficulty], async () => {
-      wordList.value = await selectWords();
+    watch(words, async () => {
+      $q.loading.show();
+      let tmpWc = {
+        book: book.value,
+        step: step.value,
+        difficulty: difficulty.value,
+      };
+      for (let w of words.value) {
+        tmpWc.wordId = w.id;
+        w.wordCheck =
+          (await db.wordChecks.get(tmpWc)) ||
+          Object.assign({}, tmpWc, { cnt: 0, showRound: readRound.value });
+      }
+      $q.loading.hide();
     });
-    watch(wordList, () => {
-      setTimeout(gotoIndex, 50);
+    watch(currentIndex, (idx) => {
+      if (words.value[idx] && virtualListRef && virtualListRef.value)
+        virtualListRef.value.scrollTo(idx, "center-force");
     });
 
-    onMounted(async () => {
-      wordList.value = await selectWords();
-    });
-
-    const gotoIndex = (idx) => {
-      if (idx === undefined) idx = currentIndex.value;
-      virtualListRef.value.scrollTo(idx, "center-force");
-    };
     const played = ref(false);
+    const drawerRight = ref(false);
     const play = throttle(() => {
       played.value = !played.value;
+      if (played.value) drawerRight.value = false;
       talkWords();
     }, 3000);
 
     const talkWords = async () => {
       if (played.value) {
         try {
-          gotoIndex();
-          playMiliseconds.value -= await talkWord(wordList.value[currentIndex.value].id);
+          let tmpW;
+          let tmpWC;
           while (played.value) {
-            gotoIndex(++currentIndex.value);
-            playMiliseconds.value -= await talkWord(
-              wordList.value[currentIndex.value].id
-            );
+            if (words.value.length <= currentIndex.value) {
+              played.value = false;
+              currentIndex.value = 0;
+              readRound.value++;
+              break;
+            }
+            tmpW = words.value[currentIndex.value];
+            tmpWC = tmpW.wordCheck;
+
+            if (readRound.value < tmpWC.showRound) {
+              currentIndex.value++;
+              continue;
+            }
+            playMiliseconds.value -= await talkWord(tmpW.id);
+            if (step.value === "1-4") {
+              if (!checked.value) {
+                tmpWC.cnt++;
+                tmpWC.showRound = readRound.value + tmpWC.cnt + 1;
+              }
+              db.wordChecks.put(Object.assign({}, tmpWC));
+            }
+            checked.value = false;
+            currentIndex.value++;
           }
         } catch (e) {
           played.value = false;
@@ -373,12 +383,6 @@ export default {
         }
       }
     };
-    watch(playMiliseconds, (pm) => {
-      if (pm <= 0) {
-        playMiliseconds.value = 1500000;
-        played.value = false;
-      }
-    });
 
     const talkWord = (id) => {
       return new Promise((res, rej) => {
@@ -430,16 +434,43 @@ export default {
         db.words
           .clear()
           .then(() => db.words.bulkAdd(rslt))
-          .then(selectWords)
-          .then((arr) => (wordList.value = arr));
+          .then((v) => {
+            console.log(v);
+            status.difficulty = 0;
+          });
       };
       reader.readAsArrayBuffer(event.target.files[0]);
     };
-    const downXlsx = () => {
+    const downXlsx = async () => {
       let wb = XLSX.utils.book_new();
-      let sh = XLSX.utils.json_to_sheet(wordList.value);
-      XLSX.utils.book_append_sheet(wb, sh, "beginner2");
-      XLSX.writeFile(wb, "talpi.xlsx");
+      let tNms = ["finalStatus", "baseStatuses", "lastStatuses", "words", "wordChecks"];
+      for (let nm of tNms) {
+        let datas = await db[nm].toArray();
+        let sh = XLSX.utils.json_to_sheet(datas);
+        XLSX.utils.book_append_sheet(wb, sh, nm);
+      }
+      XLSX.writeFile(wb, "talpi_datas.xlsx");
+    };
+
+    const initDB = () => {
+      $q.loading.show();
+      let req = new XMLHttpRequest();
+      req.open("GET", "/talpi_datas.xlsx", true);
+      req.responseType = "arraybuffer";
+      req.onload = async (e) => {
+        let data = new Uint8Array(req.response);
+        let workbook = XLSX.read(data, { type: "array" });
+        let shNms = workbook.SheetNames;
+        for (let nm of shNms) {
+          let sh = workbook.Sheets[nm];
+          let datas = XLSX.utils.sheet_to_json(sh);
+          let rslt = await db[nm].bulkPut(datas);
+          console.log(rslt);
+        }
+        $q.loading.hide();
+        window.location.reload();
+      };
+      req.send();
     };
 
     return {
@@ -449,23 +480,24 @@ export default {
       playMiliseconds,
       wordGap,
       currentIndex,
-      obBook,
+      readRound,
+      oBook,
       books,
-      obStep,
-      steps,
-      obDifficulty,
-      difficultys,
+      oStep,
+      oDifficulity,
       playMinutes,
       display,
       checkDisplay,
-      check,
+      checked,
       played,
       play,
-      wordList,
+      inputPm,
+      words,
       virtualListRef,
       parseXlsx,
       downXlsx,
-      drawerRight: ref(false),
+      initDB,
+      drawerRight,
     };
   },
 };
