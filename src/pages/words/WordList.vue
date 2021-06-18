@@ -6,15 +6,33 @@
           {{ oBook.label }} {{ oStep.label }}단계 {{ oDifficulity.label }}
           {{ readRound }}회독
         </q-toolbar-title>
-        단어 간격 : {{ wordGap }}초
-        <q-btn
-          v-if="!played"
-          flat
-          @click="drawerRight = !drawerRight"
-          round
-          dense
-          icon="settings"
-        />
+        <div class="q-gutter-sm row items-center">
+          <div class="col">단어 간격 {{ wordGap }}초</div>
+          <q-btn
+            round
+            color="primary"
+            class="glossy"
+            size="xs"
+            icon="keyboard_arrow_left"
+            @mousedown.left="downSec"
+          />
+          <q-btn
+            round
+            color="primary"
+            class="glossy"
+            size="xs"
+            icon="keyboard_arrow_right"
+            @mousedown.left="upSec"
+          />
+          <q-btn
+            v-if="!played"
+            flat
+            @click="drawerRight = !drawerRight"
+            round
+            dense
+            icon="settings"
+          />
+        </div>
       </q-toolbar>
     </q-header>
     <q-drawer side="right" v-model="drawerRight" bordered :breakpoint="500">
@@ -161,9 +179,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div>
-                        <span v-show="display.default.category">
-                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
-                        </span>
+                        <span v-show="display.default.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="display.default.hint">{{ item.hint }}</span
                         >&nbsp;
                       </div>
@@ -352,6 +370,7 @@ export default {
     watch(played, async (p) => {
       if (words.value.length <= currentIndex.value) currentIndex.value = 0;
       if (!p) return;
+      virtualListRef.value.scrollTo(currentIndex.value, "center-force");
       try {
         setAudio();
         let w, wc;
@@ -497,6 +516,12 @@ export default {
       downXlsx,
       initDB,
       drawerRight,
+      downSec: () => {
+        let tmp = Number((wordGap.value - 0.1).toFixed(1));
+        if (tmp < -0.5) tmp = -0.5;
+        wordGap.value = tmp;
+      },
+      upSec: () => (wordGap.value = Number((wordGap.value + 0.1).toFixed(1))),
     };
   },
 };
