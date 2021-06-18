@@ -105,12 +105,12 @@
             <template v-slot="{ item, index }">
               <q-item
                 v-if="index === currentIndex"
-                class="bg-blue-grey"
+                class="bg-blue-grey glossy"
                 :key="'focus' + index"
               >
                 <q-item-section>
                   <div class="row items-center">
-                    <div class="col-3 text-right" style="padding-right: 15px">
+                    <div class="col-5 text-right" style="padding-right: 15px">
                       <div>&nbsp;</div>
                       <div class="text-h5">
                         <span v-show="checkDisplay.word">{{ item.word }}</span
@@ -157,7 +157,7 @@
               <q-item v-else :key="'default' + index">
                 <q-item-section>
                   <div class="row items-center">
-                    <div class="col-3 text-right" style="padding-right: 15px">
+                    <div class="col-5 text-right" style="padding-right: 15px">
                       <div>&nbsp;</div>
                       <div class="text-h5">
                         <span v-show="display.default.word">{{ item.word }}</span
@@ -179,9 +179,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div>
-                        <span v-show="display.default.category">{{
-                          item.category || "" !== "" ? `[${item.category}]` : ""
-                        }}</span>
+                        <span v-show="display.default.category">
+                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
+                        </span>
                         <span v-show="display.default.hint">{{ item.hint }}</span
                         >&nbsp;
                       </div>
