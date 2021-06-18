@@ -9,10 +9,12 @@
     "lint": "eslint --ext .js,.vue ./",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
+    "dev:pwa": "quasar dev -m pwa",
     "build": "quasar build",
     "build:pwa": "quasar build -m pwa"
   },
   "dependencies": {
+    "@quasar/cli": "^1.2.1",
     "@quasar/extras": "^1.0.0",
     "core-js": "^3.6.5",
     "dexie": "^3.0.3",
@@ -26,7 +28,8 @@
     "eslint": "^7.14.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-vue": "^7.0.0",
-    "eslint-webpack-plugin": "^2.4.0"
+    "eslint-webpack-plugin": "^2.4.0",
+    "workbox-webpack-plugin": "^6.0.0"
   },
   "browserslist": [
     "last 10 Chrome versions",

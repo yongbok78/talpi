@@ -1,5 +1,6 @@
 import { ref, reactive, watch, computed } from "vue";
 import Dexie from "dexie";
+
 const books = [
   {
     label: "초급편",
@@ -57,6 +58,7 @@ db.version(1).stores({
   words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, isHard, isCore`,
   wordChecks: `[wordId+book+step+difficulty], cnt, showRound`,
 });
+
 let idCnt = 1;
 let baseStatuses = [];
 for (let b in books) {
@@ -185,13 +187,11 @@ watch(
     }
   }
 );
-db.finalStatus.get({ id: 1 }).then((o) => {
-  assign(status, o);
-  db.baseStatuses.toArray().then((a) => {
-    for (let o of a) {
-      baseStatuses[o.id - 1] = o;
-    }
-  });
+
+db.baseStatuses.toArray().then((a) => {
+  for (let o of a) {
+    baseStatuses[o.id - 1] = o;
+  }
 });
 
 const words = ref([]);

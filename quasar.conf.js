@@ -138,11 +138,11 @@ module.exports = configure(function (ctx) {
       },
 
       manifest: {
-        name: `Quasar App`,
-        short_name: `Quasar App`,
+        name: `영어탈피`,
+        short_name: `탈피`,
         description: `영어탈피`,
-        display: "standalone",
-        orientation: "portrait",
+        display: "fullscreen",
+        orientation: "landscape",
         background_color: "#ffffff",
         theme_color: "#027be3",
         icons: [

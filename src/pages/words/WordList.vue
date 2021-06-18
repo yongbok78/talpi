@@ -21,23 +21,12 @@
       <q-scroll-area class="fit">
         <div class="q-pa-md">
           <div class="q-gutter-y-md column">
-            <q-select
-              v-model="oBook"
-              :options="books"
-              label="책"
-              class="col-1"
-            ></q-select>
-            <q-select
-              v-model="oStep"
-              :options="oBook.steps"
-              label="단계"
-              class="col-1"
-            ></q-select>
+            <q-select v-model="oBook" :options="books" label="책"></q-select>
+            <q-select v-model="oStep" :options="oBook.steps" label="단계"></q-select>
             <q-select
               v-model="oDifficulity"
               :options="oBook.difficulties"
               label="난이도"
-              class="col-1"
             ></q-select>
             <q-input
               label="재생 시간"
@@ -45,7 +34,6 @@
               v-model.number="playMinutes"
               type="number"
               min="0"
-              class="col-1"
               ref="inputPm"
             />
             <q-input
@@ -55,22 +43,14 @@
               type="number"
               step="0.1"
               min="-0.5"
-              class="col-1"
             />
-            <q-input
-              label="회독"
-              v-model.number="readRound"
-              type="number"
-              min="0"
-              class="col-1"
-            />
+            <q-input label="회독" v-model.number="readRound" type="number" min="0" />
             <q-input
               label="현위치"
               :hint="currentIndex + '/' + words.length"
               v-model.number="currentIndex"
               type="number"
               min="0"
-              class="col-1"
             />
             <q-btn @click="downXlsx" icon="file_download" class="glossy" color="teal"
               >DB정보 엑셀 다운로드</q-btn
@@ -82,6 +62,13 @@
               color="accent"
               >DB정보 초기화</q-btn
             >
+            <!-- <q-file
+              label="단어추가"
+              filled
+              style="max-width: 300px"
+              accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              @change="parseXlsx"
+            />-->
           </div>
         </div>
       </q-scroll-area>
@@ -197,17 +184,7 @@
             </template>
           </q-virtual-scroll>
         </div>
-        <div class="row">
-          <div class="col">
-            <q-file
-              label="엑셀파일 변환"
-              filled
-              style="max-width: 300px"
-              accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              @change="parseXlsx"
-            />
-          </div>
-        </div>
+
         <q-page-sticky position="bottom-right" :offset="[30, 30]">
           <div class="q-gutter-sm">
             <q-badge v-show="played" outline align="middle" color="white"
@@ -234,8 +211,8 @@
 </template>
 
 <script>
-import { ref, toRefs, watch, reactive, computed } from "vue";
-import { throttle, useQuasar } from "quasar";
+import { ref, toRefs, watch, reactive, computed, onMounted } from "vue";
+import { throttle, debounce, useQuasar } from "quasar";
 import XLSX from "xlsx";
 import {
   baseStatus,
@@ -271,7 +248,7 @@ export default {
     });
     const inputPm = ref(null);
     watch(playMiliseconds, (pm) => {
-      if (pm <= 0) {
+      if (pm <= 0 || isNaN(pm)) {
         playMiliseconds.value = baseStatus.value.playMiliseconds;
         played.value = false;
         inputPm.value.blur();
@@ -281,6 +258,9 @@ export default {
     const assign = (t, o) => {
       for (let k of Object.keys(t)) if (o[k] !== undefined) t[k] = o[k];
     };
+    onMounted(async () => {
+      assign(status, await db.finalStatus.get({ id: 1 }));
+    });
 
     const display = reactive({
       default: {
@@ -316,25 +296,50 @@ export default {
     });
 
     const virtualListRef = ref(null);
-
+    const setAudio = (cnt) => {
+      cnt = cnt || 3;
+      let w;
+      for (let i = currentIndex.value; i < words.value.length; i++) {
+        if (cnt === 0) break;
+        w = words.value[i];
+        if (w.readable && !w.audio) {
+          w.audio = new Audio(`/mp3/beginner2/${w.id.toString().padStart(5, "0")}.mp3`);
+          cnt--;
+        }
+      }
+    };
     watch(words, async () => {
       $q.loading.show();
-      let tmpWc = {
+      let wc = {
         book: book.value,
         step: step.value,
         difficulty: difficulty.value,
       };
+      let wcs = await db.wordChecks
+        .filter(
+          (o) =>
+            o.book === book.value &&
+            o.step === step.value &&
+            o.difficulty === difficulty.value
+        )
+        .toArray();
+      wcs = wcs.reduce((result, v) => {
+        result[v.wordId] = v;
+        return result;
+      }, {});
       for (let w of words.value) {
-        tmpWc.wordId = w.id;
+        wc.wordId = w.id;
         w.wordCheck =
-          (await db.wordChecks.get(tmpWc)) ||
-          Object.assign({}, tmpWc, { cnt: 0, showRound: readRound.value });
+          wcs[w.id] || Object.assign({}, wc, { cnt: 0, showRound: readRound.value });
+        w.readable = w.wordCheck.showRound <= readRound.value;
       }
       $q.loading.hide();
+      virtualListRef.value.scrollTo(currentIndex.value, "center-force");
     });
     watch(currentIndex, (idx) => {
-      if (words.value[idx] && virtualListRef && virtualListRef.value)
-        virtualListRef.value.scrollTo(idx, "center-force");
+      let w = words.value[idx];
+      if (!w) return;
+      if (virtualListRef.value) virtualListRef.value.scrollTo(idx, "center-force");
     });
 
     const played = ref(false);
@@ -342,67 +347,61 @@ export default {
     const play = throttle(() => {
       played.value = !played.value;
       if (played.value) drawerRight.value = false;
-      talkWords();
     }, 3000);
 
-    const talkWords = async () => {
-      if (played.value) {
-        try {
-          let tmpW;
-          let tmpWC;
-          while (played.value) {
-            if (words.value.length <= currentIndex.value) {
-              played.value = false;
-              currentIndex.value = 0;
-              readRound.value++;
-              break;
-            }
-            tmpW = words.value[currentIndex.value];
-            tmpWC = tmpW.wordCheck;
-
-            if (readRound.value < tmpWC.showRound) {
-              currentIndex.value++;
-              continue;
-            }
-            playMiliseconds.value -= await talkWord(tmpW.id);
-            if (step.value === "1-4") {
-              if (!checked.value) {
-                tmpWC.cnt++;
-                tmpWC.showRound = readRound.value + tmpWC.cnt + 1;
-              }
-              db.wordChecks.put(Object.assign({}, tmpWC));
-            }
-            checked.value = false;
-            currentIndex.value++;
+    watch(played, async (p) => {
+      if (words.value.length <= currentIndex.value) currentIndex.value = 0;
+      if (!p) return;
+      try {
+        setAudio();
+        let w, wc;
+        while (played.value) {
+          if (words.value.length <= currentIndex.value) {
+            played.value = false;
+            currentIndex.value = 0;
+            readRound.value++;
+            break;
           }
-        } catch (e) {
-          played.value = false;
-          currentIndex.value = 0;
-          virtualListRef.value.scrollTo(0);
-          console.log(e);
-        }
-      }
-    };
 
-    const talkWord = (id) => {
-      return new Promise((res, rej) => {
-        try {
-          const ad = new Audio(`/mp3/beginner2/${id.toString().padStart(5, "0")}.mp3`);
-          ad.addEventListener("canplay", () => {
-            const milis = Math.ceil(ad.duration * 1000) * 2 + wordGap.value * 1000;
-            setTimeout(() => {
-              res(milis);
-            }, milis);
+          w = words.value[currentIndex.value];
+          wc = w.wordCheck;
+          if (!w.readable) {
+            currentIndex.value++;
+            continue;
+          }
+
+          let elapsedTime = await new Promise((resolve, reject) => {
+            w.audio.addEventListener("ended", () => {
+              resolve(Math.ceil(w.audio.duration * 1000));
+            });
+            w.audio.addEventListener("error", reject);
+            w.audio.play();
           });
-          ad.addEventListener("error", (event) => {
-            rej(event);
-          });
-          ad.play();
-        } catch (err) {
-          rej(err);
+          playMiliseconds.value -= elapsedTime;
+          playMiliseconds.value -= await new Promise((resolve) =>
+            setTimeout(() => resolve(elapsedTime), elapsedTime)
+          );
+          playMiliseconds.value -= await new Promise((resolve) =>
+            setTimeout(() => resolve(wordGap.value * 1000), wordGap.value * 1000)
+          );
+          w.audio = undefined;
+
+          if (step.value === "1-4") {
+            if (!checked.value) {
+              wc.cnt++;
+              wc.showRound = readRound.value + wc.cnt + 1;
+            }
+            db.wordChecks.put(Object.assign({}, wc));
+          }
+          checked.value = false;
+          currentIndex.value++;
+          setAudio(1);
         }
-      });
-    };
+      } catch (e) {
+        played.value = false;
+        console.log(e);
+      }
+    });
 
     const parseXlsx = (event) => {
       let reader = new FileReader();
