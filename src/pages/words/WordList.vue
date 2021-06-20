@@ -104,12 +104,17 @@
           >
             <template v-slot="{ item, index }">
               <q-item
-                v-if="index === currentIndex"
-                class="bg-blue-grey glossy"
+                :class="{ 'bg-blue-grey glossy': index === currentIndex }"
                 :key="'focus' + index"
               >
                 <q-item-section>
-                  <div class="row items-center">
+                  <audio
+                    :ref="(el) => (words[index].audio = el)"
+                    :key="item.id"
+                    type="audio/mpeg"
+                    crossorigin="anonymous"
+                  ></audio>
+                  <div v-if="index === currentIndex" class="row items-center">
                     <div class="col-5 text-right" style="padding-right: 15px">
                       <div>&nbsp;</div>
                       <div class="text-h5">
@@ -152,11 +157,7 @@
                       </div>
                     </div>
                   </div>
-                </q-item-section>
-              </q-item>
-              <q-item v-else :key="'default' + index">
-                <q-item-section>
-                  <div class="row items-center">
+                  <div v-else class="row items-center">
                     <div class="col-5 text-right" style="padding-right: 15px">
                       <div>&nbsp;</div>
                       <div class="text-h5">
@@ -320,8 +321,8 @@ export default {
       for (let i = currentIndex.value; i < words.value.length; i++) {
         if (cnt === 0) break;
         w = words.value[i];
-        if (w.readable && !w.audio) {
-          w.audio = new Audio(`/mp3/beginner2/${w.id.toString().padStart(5, "0")}.mp3`);
+        if (w.readable) {
+          w.audio.src = `/mp3/beginner2/${w.id.toString().padStart(5, "0")}.mp3`;
           cnt--;
         }
       }
@@ -403,7 +404,6 @@ export default {
           playMiliseconds.value -= await new Promise((resolve) =>
             setTimeout(() => resolve(wordGap.value * 1000), wordGap.value * 1000)
           );
-          w.audio = undefined;
 
           if (step.value === "1-4") {
             if (!checked.value) {
