@@ -116,14 +116,13 @@
                   ></audio>
                   <div v-if="index === currentIndex" class="row items-center">
                     <div class="col-5 text-right" style="padding-right: 15px">
-                      <div>&nbsp;</div>
-                      <div class="text-h5">
-                        <span v-show="checkDisplay.word">{{ item.word }}</span
-                        >&nbsp;
+                      <div class="ht21"></div>
+                      <div class="text-h5 ht32">
+                        &nbsp;
+                        <span v-show="checkDisplay.word">{{ item.word }}</span>
                       </div>
-                      <div>
-                        <span v-show="checkDisplay.word2">{{ item.word2 }}&nbsp;</span
-                        >&nbsp;
+                      <div class="ht21">
+                        <span v-show="checkDisplay.word2">{{ item.word2 }}</span>
                       </div>
                     </div>
                     <div class="col-0">
@@ -136,37 +135,30 @@
                       >
                     </div>
                     <div class="col" style="padding-left: 35px">
-                      <div>
+                      <div class="ht21">
                         <span v-show="checkDisplay.category">
-                          {{
-                            item.category || "" !== "" ? `[${item.category}]` : ""
-                          }}&nbsp;
+                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
                         </span>
-                        <span v-show="checkDisplay.hint">{{ item.hint }}&nbsp;</span
-                        >&nbsp;
+                        <span v-show="checkDisplay.hint">{{ item.hint }}</span>
                       </div>
-                      <div class="text-h5">
-                        <span v-show="checkDisplay.meaning"
-                          >{{ item.meaning }}&nbsp;</span
-                        >
+                      <div class="text-h5 ht32">
+                        &nbsp;
+                        <span v-show="checkDisplay.meaning">{{ item.meaning }}</span>
                       </div>
-                      <div>
-                        <span v-show="checkDisplay.meaning2"
-                          >{{ item.meaning2 }}&nbsp;</span
-                        >&nbsp;
+                      <div class="ht21">
+                        <span v-show="checkDisplay.meaning2">{{ item.meaning2 }}</span>
                       </div>
                     </div>
                   </div>
                   <div v-else class="row items-center">
                     <div class="col-5 text-right" style="padding-right: 15px">
-                      <div>&nbsp;</div>
-                      <div class="text-h5">
-                        <span v-show="display.default.word">{{ item.word }}</span
-                        >&nbsp;
+                      <div class="ht21"></div>
+                      <div class="text-h5 ht32">
+                        &nbsp;
+                        <span v-show="display.default.word">{{ item.word }}</span>
                       </div>
-                      <div>
-                        <span v-show="display.default.word2">{{ item.word2 }}&nbsp;</span
-                        >&nbsp;
+                      <div class="ht21">
+                        <span v-show="display.default.word2">{{ item.word2 }}</span>
                       </div>
                     </div>
                     <div class="col-0">
@@ -179,22 +171,18 @@
                       >
                     </div>
                     <div class="col" style="padding-left: 35px">
-                      <div>
+                      <div class="ht21">
                         <span v-show="display.default.category">
                           {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
                         </span>
-                        <span v-show="display.default.hint">{{ item.hint }}</span
-                        >&nbsp;
+                        <span v-show="display.default.hint">{{ item.hint }}</span>
                       </div>
-                      <div class="text-h5">
-                        <span v-show="display.default.meaning"
-                          >{{ item.meaning }}&nbsp;</span
-                        >
+                      <div class="text-h5 ht32">
+                        &nbsp;
+                        <span v-show="display.default.meaning">{{ item.meaning }}</span>
                       </div>
-                      <div>
-                        <span v-show="display.default.meaning2"
-                          >{{ item.meaning2 }}&nbsp;</span
-                        >&nbsp;
+                      <div class="ht21">
+                        <span v-show="display.default.meaning2">{{ item.meaning2 }}</span>
                       </div>
                     </div>
                   </div>
@@ -231,7 +219,7 @@
 
 <script>
 import { ref, toRefs, watch, reactive, computed, onMounted } from "vue";
-import { throttle, debounce, useQuasar } from "quasar";
+import { throttle, useQuasar } from "quasar";
 import XLSX from "xlsx";
 import {
   baseStatus,
@@ -241,6 +229,7 @@ import {
   oStep,
   oDifficulity,
   words,
+  display,
   db,
 } from "../../common/db";
 
@@ -275,48 +264,29 @@ export default {
     });
 
     const assign = (t, o) => {
+      if (!o) return;
       for (let k of Object.keys(t)) if (o[k] !== undefined) t[k] = o[k];
     };
     onMounted(async () => {
       assign(status, await db.finalStatus.get({ id: 1 }));
     });
 
-    const display = reactive({
-      default: {
-        word: true,
-        word2: true,
-        partOfSpeech: false,
-        category: false,
-        hint: false,
-        meaning: false,
-        meaning2: false,
-      },
-      focus: {
-        word: true,
-        word2: true,
-        partOfSpeech: true,
-        category: false,
-        hint: false,
-        meaning: false,
-        meaning2: false,
-      },
-    });
     const checked = ref(false);
     const checkDisplay = computed(() => {
-      let fcs = Object.assign({}, display.focus);
+      let fcs = Object.assign({}, display.value.focus);
       if (checked.value) {
         for (let k in fcs) {
           fcs[k] = true;
         }
       } else {
-        fcs = display.focus;
+        fcs = display.value.focus;
       }
       return fcs;
     });
 
     const virtualListRef = ref(null);
     const setAudio = (cnt) => {
-      cnt = cnt || 3;
+      cnt = cnt || 10;
       let w;
       for (let i = currentIndex.value; i < words.value.length; i++) {
         if (cnt === 0) break;
@@ -482,8 +452,15 @@ export default {
         for (let nm of shNms) {
           let sh = workbook.Sheets[nm];
           let datas = XLSX.utils.sheet_to_json(sh);
+          if (nm === "words") {
+            for (let w of datas) {
+              console.log(w);
+              for (let k in w) {
+                if (typeof w[k] === "string" && w[k].indexOf("'") > 0) w[k] = "'" + w[k];
+              }
+            }
+          }
           let rslt = await db[nm].bulkPut(datas);
-          console.log(rslt);
         }
         $q.loading.hide();
         window.location.reload();
@@ -529,9 +506,15 @@ export default {
 
 <style scoped lang="scss">
 .q-item div {
-  color: $grey-10;
+  color: $grey-9;
 }
 .q-item.bg-blue-grey div {
   color: white;
+}
+div.ht21 {
+  height: 21px;
+}
+div.ht32 {
+  height: 32px;
 }
 </style>
