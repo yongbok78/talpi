@@ -321,6 +321,38 @@ db.version(1).stores({
   wordChecks: `[wordId+book+step+difficulty], cnt, showRound`,
 });
 
+db.version(2)
+  .stores({
+    finalStatus: `&id, book, step, difficulty, playSeconds, wordGap, currentIndex, readRound`,
+    baseStatuses: `&id, [book+step+difficulty], playSeconds, wordGap, currentIndex, readRound`,
+    lastStatuses: `&id, [book+step+difficulty], playSeconds, wordGap, currentIndex, readRound`,
+    words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, isHard, isCore`,
+    wordChecks: `[wordId+book+step+difficulty], cnt, showRound`,
+  })
+  .upgrade(async (tx) => {
+    await tx
+      .table("finalStatus")
+      .toCollection()
+      .modify((s) => {
+        s.playSeconds = Math.ceil(s.playMiliseconds / 1000);
+        delete s.playMiliseconds;
+      });
+    await tx
+      .table("baseStatuses")
+      .toCollection()
+      .modify((s) => {
+        s.playSeconds = Math.ceil(s.playMiliseconds / 1000);
+        delete s.playMiliseconds;
+      });
+    return await tx
+      .table("lastStatuses")
+      .toCollection()
+      .modify((s) => {
+        s.playSeconds = Math.ceil(s.playMiliseconds / 1000);
+        delete s.playMiliseconds;
+      });
+  });
+
 let idCnt = 1;
 let baseStatuses = [];
 for (let b in books) {
@@ -331,7 +363,7 @@ for (let b in books) {
         book: books[b].value,
         step: s.value,
         difficulty: d.value,
-        playMiliseconds: 1500000,
+        playSeconds: 1500,
         wordGap: 1.5,
         currentIndex: 0,
         readRound: 0,
@@ -352,7 +384,7 @@ db.finalStatus.get({ id: 1 }).then((o) => {
       book: "beginner2",
       step: "1-4",
       difficulty: 1,
-      playMiliseconds: 1500000,
+      playSeconds: 1500,
       wordGap: 1.5,
       currentIndex: 0,
       readRound: 9,
@@ -371,7 +403,7 @@ const status = reactive({
   book: "beginner",
   step: "1-1",
   difficulty: 0,
-  playMiliseconds: 1500000,
+  playSeconds: 1500,
   wordGap: 1.5,
   currentIndex: 0,
   readRound: 0,
@@ -438,7 +470,7 @@ watch(
         .modify(
           Object.assign(
             {
-              playMiliseconds: null,
+              playSeconds: null,
               wordGap: null,
               currentIndex: null,
               readRound: null,

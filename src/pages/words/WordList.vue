@@ -136,14 +136,14 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="checkDisplay.category">
-                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
-                        </span>
+                        <span v-show="checkDisplay.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="checkDisplay.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
-                        &nbsp;
                         <span v-show="checkDisplay.meaning">{{ item.meaning }}</span>
+                        &nbsp;
                       </div>
                       <div class="ht21">
                         <span v-show="checkDisplay.meaning2">{{ item.meaning2 }}</span>
@@ -172,14 +172,14 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="display.default.category">
-                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
-                        </span>
+                        <span v-show="display.default.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="display.default.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
-                        &nbsp;
                         <span v-show="display.default.meaning">{{ item.meaning }}</span>
+                        &nbsp;
                       </div>
                       <div class="ht21">
                         <span v-show="display.default.meaning2">{{ item.meaning2 }}</span>
@@ -195,7 +195,7 @@
         <q-page-sticky position="bottom-right" :offset="[30, 30]">
           <div class="q-gutter-sm">
             <q-badge v-show="played" outline align="middle" color="white"
-              >{{ playMinutes }}분 {{ Math.ceil(playMiliseconds / 1000) % 60 }}초</q-badge
+              >{{ playMinutes }}분 {{ playSeconds % 60 }}초</q-badge
             >
             <q-btn
               fab
@@ -242,22 +242,24 @@ export default {
       book,
       step,
       difficulty,
-      playMiliseconds,
+      playSeconds,
       wordGap,
       currentIndex,
       readRound,
     } = toRefs(status);
 
     const playMinutes = computed({
-      get: () => Math.floor(playMiliseconds.value / 60000),
+      get: () => Math.floor(playSeconds.value / 60),
       set: (val) => {
-        playMiliseconds.value = val * 60000 + (playMiliseconds.value % 60000);
+        playSeconds.value = val * 60 + (playSeconds.value % 60);
       },
     });
     const inputPm = ref(null);
-    watch(playMiliseconds, (pm) => {
+    let intervalId = 0;
+    watch(playSeconds, (pm) => {
       if (pm <= 0 || isNaN(pm)) {
-        playMiliseconds.value = baseStatus.value.playMiliseconds;
+        clearInterval(intervalId);
+        playSeconds.value = baseStatus.value.playSeconds;
         played.value = false;
         inputPm.value.blur();
       }
@@ -340,7 +342,11 @@ export default {
 
     watch(played, async (p) => {
       if (words.value.length <= currentIndex.value) currentIndex.value = 0;
-      if (!p) return;
+      if (!p) {
+        clearInterval(intervalId);
+        return;
+      }
+      intervalId = setInterval(() => (playSeconds.value -= 1), 1000);
       virtualListRef.value.scrollTo(currentIndex.value, "center-force");
       try {
         setAudio();
@@ -360,20 +366,16 @@ export default {
             continue;
           }
 
-          let elapsedTime = await new Promise((resolve, reject) => {
+          await new Promise((resolve, reject) => {
             w.audio.addEventListener("ended", () => {
-              resolve(Math.ceil(w.audio.duration * 1000));
+              setTimeout(
+                resolve,
+                Math.ceil(w.audio.duration * 1000) + wordGap.value * 1000
+              );
             });
             w.audio.addEventListener("error", reject);
             w.audio.play();
           });
-          playMiliseconds.value -= elapsedTime;
-          playMiliseconds.value -= await new Promise((resolve) =>
-            setTimeout(() => resolve(elapsedTime), elapsedTime)
-          );
-          playMiliseconds.value -= await new Promise((resolve) =>
-            setTimeout(() => resolve(wordGap.value * 1000), wordGap.value * 1000)
-          );
 
           if (step.value === "1-4") {
             if (!checked.value) {
@@ -472,7 +474,7 @@ export default {
       book,
       step,
       difficulty,
-      playMiliseconds,
+      playSeconds,
       wordGap,
       currentIndex,
       readRound,
