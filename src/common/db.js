@@ -399,6 +399,7 @@ const assign = (t, o) => {
       console.log("assign", e.message);
     }
 };
+const loading = ref(false);
 const status = reactive({
   book: "beginner",
   step: "1-1",
@@ -492,6 +493,7 @@ const words = ref([]);
 watch(
   () => [status.book, status.difficulty],
   async (a) => {
+    loading.value = true;
     let col;
     if (a[1] !== 0) {
       let w = {};
@@ -503,7 +505,35 @@ watch(
       col = db.words.where(w);
     } else col = db.words.toCollection();
     // 전체 조회
-    words.value = await col.sortBy(`${a[0]}_loc`);
+    const ws = await col.sortBy(`${a[0]}_loc`);
+    let wc = {
+      book: status.book,
+      step: status.step,
+      difficulty: status.difficulty,
+    };
+    let wcs = await db.wordChecks
+      .filter(
+        (o) =>
+          o.book === status.book &&
+          o.step === status.step &&
+          o.difficulty === status.difficulty
+      )
+      .toArray();
+    wcs = wcs.reduce((result, v) => {
+      result[v.wordId] = v;
+      return result;
+    }, {});
+    for (let w of ws) {
+      wc.wordId = w.id;
+      w.wordCheck =
+        wcs[w.id] ||
+        Object.assign({}, wc, { cnt: 0, showRound: status.readRound });
+      w.readable = w.wordCheck.showRound <= status.readRound;
+      w.display = Object.assign({}, display.value.default);
+      w.checked = false;
+    }
+    loading.value = false;
+    words.value = ws;
   }
 );
 
@@ -530,6 +560,7 @@ const display = computed({
 
 export default db;
 export {
+  loading,
   baseStatus,
   status,
   books,

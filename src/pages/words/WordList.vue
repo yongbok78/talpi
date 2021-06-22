@@ -103,26 +103,31 @@
             style="height: inherit"
           >
             <template v-slot="{ item, index }">
-              <q-item
-                :class="{ 'bg-blue-grey glossy': index === currentIndex }"
-                :key="'focus' + index"
-              >
-                <q-item-section>
+              <q-item :class="{ 'bg-blue-grey glossy': item.focused }" :key="item.id">
+                <q-item-section @click="checkWord(index, item)">
                   <audio
                     :ref="(el) => (words[index].audio = el)"
-                    :key="item.id"
                     type="audio/mpeg"
                     crossorigin="anonymous"
                   ></audio>
-                  <div v-if="index === currentIndex" class="row items-center">
-                    <div class="col-5 text-right" style="padding-right: 15px">
+                  <div class="row items-center">
+                    <div class="col-1">
+                      <q-badge
+                        color="white"
+                        outline
+                        rounded
+                        v-show="readRound < item.wordCheck.showRound"
+                        >{{ item.wordCheck.showRound }}</q-badge
+                      >
+                    </div>
+                    <div class="col-4 text-right" style="padding-right: 15px">
                       <div class="ht21"></div>
                       <div class="text-h5 ht32">
                         &nbsp;
-                        <span v-show="checkDisplay.word">{{ item.word }}</span>
+                        <span v-show="item.display.word">{{ item.word }}</span>
                       </div>
                       <div class="ht21">
-                        <span v-show="checkDisplay.word2">{{ item.word2 }}</span>
+                        <span v-show="item.display.word2">{{ item.word2 }}</span>
                       </div>
                     </div>
                     <div class="col-0">
@@ -130,60 +135,37 @@
                         round
                         size="xs"
                         color="grey-8"
-                        v-show="checkDisplay.partOfSpeech"
+                        v-show="item.display.partOfSpeech"
                         >{{ item.partOfSpeech }}</q-btn
                       >
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="checkDisplay.category">{{
+                        <span v-show="item.display.category">{{
                           item.category || "" !== "" ? `[${item.category}]` : ""
                         }}</span>
-                        <span v-show="checkDisplay.hint">{{ item.hint }}</span>
+                        <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
-                        <span v-show="checkDisplay.meaning">{{ item.meaning }}</span>
+                        <span v-show="item.display.meaning">{{ item.meaning }}</span>
                         &nbsp;
                       </div>
                       <div class="ht21">
-                        <span v-show="checkDisplay.meaning2">{{ item.meaning2 }}</span>
+                        <span v-show="item.display.meaning2">{{ item.meaning2 }}</span>
                       </div>
                     </div>
-                  </div>
-                  <div v-else class="row items-center">
-                    <div class="col-5 text-right" style="padding-right: 15px">
-                      <div class="ht21"></div>
-                      <div class="text-h5 ht32">
-                        &nbsp;
-                        <span v-show="display.default.word">{{ item.word }}</span>
-                      </div>
-                      <div class="ht21">
-                        <span v-show="display.default.word2">{{ item.word2 }}</span>
-                      </div>
-                    </div>
-                    <div class="col-0">
-                      <q-btn
-                        round
-                        size="xs"
-                        color="grey-8"
-                        v-show="display.default.partOfSpeech"
-                        >{{ item.partOfSpeech }}</q-btn
-                      >
-                    </div>
-                    <div class="col" style="padding-left: 35px">
-                      <div class="ht21">
-                        <span v-show="display.default.category">{{
-                          item.category || "" !== "" ? `[${item.category}]` : ""
-                        }}</span>
-                        <span v-show="display.default.hint">{{ item.hint }}</span>
-                      </div>
-                      <div class="text-h5 ht32">
-                        <span v-show="display.default.meaning">{{ item.meaning }}</span>
-                        &nbsp;
-                      </div>
-                      <div class="ht21">
-                        <span v-show="display.default.meaning2">{{ item.meaning2 }}</span>
-                      </div>
+                    <div class="col-1">
+                      <q-icon
+                        :name="item.checked ? 'check_box' : 'crop_din'"
+                        style="font-size: 30px"
+                      />
+                      <q-badge
+                        rounded
+                        outline
+                        color="yellow"
+                        v-show="item.wordCheck.cnt > 0"
+                        :label="item.wordCheck.cnt"
+                      />
                     </div>
                   </div>
                 </q-item-section>
@@ -203,13 +185,6 @@
               @click="play"
               color="primary"
             />
-            <q-btn
-              v-if="played"
-              fab
-              icon="check"
-              color="primary"
-              @click="checked = !checked"
-            />
           </div>
         </q-page-sticky>
       </q-page>
@@ -218,10 +193,11 @@
 </template>
 
 <script>
-import { ref, toRefs, watch, reactive, computed, onMounted } from "vue";
+import { ref, toRefs, watch, nextTick, computed, onMounted } from "vue";
 import { throttle, useQuasar } from "quasar";
 import XLSX from "xlsx";
 import {
+  loading,
   baseStatus,
   status,
   books,
@@ -237,6 +213,11 @@ export default {
   setup() {
     const $q = useQuasar();
     $q.dark.set(true);
+
+    watch(loading, (v) => {
+      if (v) $q.loading.show();
+      else $q.loading.hide();
+    });
 
     const {
       book,
@@ -274,17 +255,6 @@ export default {
     });
 
     const checked = ref(false);
-    const checkDisplay = computed(() => {
-      let fcs = Object.assign({}, display.value.focus);
-      if (checked.value) {
-        for (let k in fcs) {
-          fcs[k] = true;
-        }
-      } else {
-        fcs = display.value.focus;
-      }
-      return fcs;
-    });
 
     const virtualListRef = ref(null);
     const setAudio = (cnt) => {
@@ -299,38 +269,23 @@ export default {
         }
       }
     };
-    watch(words, async () => {
-      $q.loading.show();
-      let wc = {
-        book: book.value,
-        step: step.value,
-        difficulty: difficulty.value,
-      };
-      let wcs = await db.wordChecks
-        .filter(
-          (o) =>
-            o.book === book.value &&
-            o.step === step.value &&
-            o.difficulty === difficulty.value
-        )
-        .toArray();
-      wcs = wcs.reduce((result, v) => {
-        result[v.wordId] = v;
-        return result;
-      }, {});
-      for (let w of words.value) {
-        wc.wordId = w.id;
-        w.wordCheck =
-          wcs[w.id] || Object.assign({}, wc, { cnt: 0, showRound: readRound.value });
-        w.readable = w.wordCheck.showRound <= readRound.value;
-      }
-      $q.loading.hide();
-      virtualListRef.value.scrollTo(currentIndex.value, "center-force");
+    watch(words, () => {
+      setTimeout(() => {
+        words.value[currentIndex.value].focused = true;
+        virtualListRef.value.scrollTo(currentIndex.value, "center-force");
+      }, 500);
     });
-    watch(currentIndex, (idx) => {
-      let w = words.value[idx];
-      if (!w) return;
-      if (virtualListRef.value) virtualListRef.value.scrollTo(idx, "center-force");
+    watch(currentIndex, (n, o) => {
+      const ow = words.value[o];
+      if (ow) {
+        ow.focused = false;
+        if (!ow.checked) ow.display = Object.assign({}, display.value.default);
+      }
+      const nw = words.value[n];
+      if (!nw) return;
+      nw.focused = true;
+      nw.display = Object.assign({}, display.value.focus);
+      if (virtualListRef.value) virtualListRef.value.scrollTo(n, "center-force");
     });
 
     const played = ref(false);
@@ -339,18 +294,37 @@ export default {
       played.value = !played.value;
       if (played.value) drawerRight.value = false;
     }, 3000);
+    const playIdx = { first: 0, last: 0 };
 
     watch(played, async (p) => {
       if (words.value.length <= currentIndex.value) currentIndex.value = 0;
+      let w;
       if (!p) {
         clearInterval(intervalId);
+        loading.value = true;
+        for (let i = playIdx.first; i < playIdx.last; i++) {
+          w = words.value[i];
+          let wc = w.wordCheck;
+          if (step.value === "1-4") {
+            if (w.checked) {
+              w.checked = false;
+            } else {
+              wc.cnt++;
+              wc.showRound = readRound.value + wc.cnt + 1;
+              await db.wordChecks.put(Object.assign({}, wc));
+            }
+          }
+        }
+        loading.value = false;
         return;
       }
+
       intervalId = setInterval(() => (playSeconds.value -= 1), 1000);
+      words.value[currentIndex.value].focused = true;
       virtualListRef.value.scrollTo(currentIndex.value, "center-force");
       try {
         setAudio();
-        let w, wc;
+        playIdx.first = currentIndex.value;
         while (played.value) {
           if (words.value.length <= currentIndex.value) {
             played.value = false;
@@ -360,7 +334,6 @@ export default {
           }
 
           w = words.value[currentIndex.value];
-          wc = w.wordCheck;
           if (!w.readable) {
             currentIndex.value++;
             continue;
@@ -377,15 +350,8 @@ export default {
             w.audio.play();
           });
 
-          if (step.value === "1-4") {
-            if (!checked.value) {
-              wc.cnt++;
-              wc.showRound = readRound.value + wc.cnt + 1;
-            }
-            db.wordChecks.put(Object.assign({}, wc));
-          }
-          checked.value = false;
           currentIndex.value++;
+          playIdx.last = currentIndex.value;
           setAudio(1);
         }
       } catch (e) {
@@ -393,6 +359,16 @@ export default {
         console.log(e);
       }
     });
+
+    const checkWord = (i, w) => {
+      if (i > currentIndex.value) return;
+      w.checked = !w.checked;
+      if (w.checked) {
+        for (let k in w.display) w.display[k] = true;
+      } else {
+        w.display = Object.assign({}, display.value[w.focused ? "focus" : "default"]);
+      }
+    };
 
     const parseXlsx = (event) => {
       let reader = new FileReader();
@@ -443,7 +419,7 @@ export default {
     };
 
     const initDB = () => {
-      $q.loading.show();
+      loading.value = true;
       let req = new XMLHttpRequest();
       req.open("GET", "/talpi_datas.xlsx", true);
       req.responseType = "arraybuffer";
@@ -456,7 +432,6 @@ export default {
           let datas = XLSX.utils.sheet_to_json(sh);
           if (nm === "words") {
             for (let w of datas) {
-              console.log(w);
               for (let k in w) {
                 if (typeof w[k] === "string" && w[k].indexOf("'") > 0) w[k] = "'" + w[k];
               }
@@ -464,7 +439,7 @@ export default {
           }
           let rslt = await db[nm].bulkPut(datas);
         }
-        $q.loading.hide();
+        loading.value = false;
         window.location.reload();
       };
       req.send();
@@ -484,12 +459,12 @@ export default {
       oDifficulity,
       playMinutes,
       display,
-      checkDisplay,
       checked,
       played,
       play,
       inputPm,
       words,
+      checkWord,
       virtualListRef,
       parseXlsx,
       downXlsx,
@@ -508,7 +483,7 @@ export default {
 
 <style scoped lang="scss">
 .q-item div {
-  color: $grey-9;
+  color: $grey-8;
 }
 .q-item.bg-blue-grey div {
   color: white;
