@@ -141,9 +141,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="item.display.category">{{
-                          item.category || "" !== "" ? `[${item.category}]` : ""
-                        }}</span>
+                        <span v-show="item.display.category">
+                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
+                        </span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -302,7 +302,7 @@ export default {
       if (!p) {
         clearInterval(intervalId);
         loading.value = true;
-        for (let i = playIdx.first; i < playIdx.last; i++) {
+        for (let i = playIdx.first; i <= playIdx.last; i++) {
           w = words.value[i];
           let wc = w.wordCheck;
           if (step.value === "1-4") {
