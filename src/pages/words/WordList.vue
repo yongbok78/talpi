@@ -3,8 +3,8 @@
     <q-header>
       <q-toolbar class="bg-primary glossy">
         <q-toolbar-title>
-          {{ oBook.label }} {{ oStep.label }}단계 {{ oDifficulity.label }}
-          {{ readRound }}회독
+          {{ oBook.label }} Unit {{ unit }} {{ oStep.label }}단계
+          {{ oDifficulity.label }} {{ readRound }}회독
         </q-toolbar-title>
         <div class="q-gutter-sm row items-center">
           <div class="col">단어 간격 {{ wordGap }}초</div>
@@ -245,6 +245,9 @@ export default {
         inputPm.value.blur();
       }
     });
+    const unit = computed(() =>
+      words.value.length === 0 ? 0 : words.value[currentIndex.value].unit || 0
+    );
 
     const assign = (t, o) => {
       if (!o) return;
@@ -463,6 +466,7 @@ export default {
       played,
       play,
       inputPm,
+      unit,
       words,
       checkWord,
       virtualListRef,

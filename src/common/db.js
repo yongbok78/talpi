@@ -353,6 +353,9 @@ db.version(2)
       });
   });
 
+db.version(3).stores({
+  words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, unit, isHard, isCore`,
+});
 let idCnt = 1;
 let baseStatuses = [];
 for (let b in books) {

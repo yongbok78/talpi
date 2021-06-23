@@ -2,9 +2,9 @@
   <router-view />
 </template>
 <script>
-import { defineComponent } from 'vue';
+import { defineComponent } from "vue";
 
 export default defineComponent({
-  name: 'App'
-})
+  name: "영어탈피",
+});
 </script>
