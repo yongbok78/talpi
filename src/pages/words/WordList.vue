@@ -4,9 +4,17 @@
       <q-toolbar class="bg-primary glossy">
         <q-toolbar-title>
           {{ oBook.label }} Unit {{ unit }} {{ oStep.label }}단계
-          {{ oDifficulity.label }} {{ readRound }}회독
+          {{ oDifficulity.label }} {{ round }}회독
         </q-toolbar-title>
-        <div class="q-gutter-sm row items-center">
+        <q-toggle
+          v-model="auto"
+          visibility-icon="autorenew"
+          color="info"
+          label="자동"
+          unchecked-icon="clear"
+          left-label
+        />
+        <div v-show="auto" class="q-gutter-sm row items-center">
           <div class="col">단어 간격 {{ wordGap }}초</div>
           <q-btn
             round
@@ -24,15 +32,15 @@
             icon="keyboard_arrow_right"
             @mousedown.left="upSec"
           />
-          <q-btn
-            v-if="!played"
-            flat
-            @click="drawerRight = !drawerRight"
-            round
-            dense
-            icon="settings"
-          />
         </div>
+        <q-btn
+          v-if="!played"
+          flat
+          @click="drawerRight = !drawerRight"
+          round
+          dense
+          icon="settings"
+        />
       </q-toolbar>
     </q-header>
     <q-drawer side="right" v-model="drawerRight" bordered :breakpoint="500">
@@ -46,29 +54,28 @@
               :options="oBook.difficulties"
               label="난이도"
             ></q-select>
+            <q-input label="회독" v-model.number="round" type="number" min="1" />
             <q-input
-              label="재생 시간"
-              hint="분"
-              v-model.number="playMinutes"
+              label="공부할 유닛수"
+              v-model.number="unitCnt"
               type="number"
               min="0"
-              ref="inputPm"
             />
             <q-input
+              label="최종 단어위치"
+              :hint="lastNo + '/' + words.length"
+              v-model.number="lastNo"
+              type="number"
+              min="1"
+            />
+            <q-input
+              v-show="auto"
               label="단어 간격"
               hint="초"
               v-model.number="wordGap"
               type="number"
               step="0.1"
               min="-0.5"
-            />
-            <q-input label="회독" v-model.number="readRound" type="number" min="0" />
-            <q-input
-              label="현위치"
-              :hint="currentIndex + '/' + words.length"
-              v-model.number="currentIndex"
-              type="number"
-              min="0"
             />
             <q-btn @click="downXlsx" icon="file_download" class="glossy" color="teal"
               >DB정보 엑셀 다운로드</q-btn
@@ -104,22 +111,13 @@
           >
             <template v-slot="{ item, index }">
               <q-item :class="{ 'bg-blue-grey glossy': item.focused }" :key="item.id">
-                <q-item-section @click="checkWord(index, item)">
+                <q-item-section>
                   <audio
                     :ref="(el) => (words[index].audio = el)"
                     type="audio/mpeg"
                     crossorigin="anonymous"
                   ></audio>
                   <div class="row items-center">
-                    <div class="col-1">
-                      <q-badge
-                        color="white"
-                        outline
-                        rounded
-                        v-show="readRound < item.wordCheck.showRound"
-                        >{{ item.wordCheck.showRound }}</q-badge
-                      >
-                    </div>
                     <div class="col-4 text-right" style="padding-right: 15px">
                       <div class="ht21"></div>
                       <div class="text-h5 ht32">
@@ -154,18 +152,49 @@
                         <span v-show="item.display.meaning2">{{ item.meaning2 }}</span>
                       </div>
                     </div>
-                    <div class="col-1">
-                      <q-icon
-                        :name="item.checked ? 'check_box' : 'crop_din'"
-                        style="font-size: 30px"
+                    <div v-if="item.focused" class="col-1.5 q-gutter-lg">
+                      <q-btn
+                        round
+                        color="info"
+                        size="md"
+                        @click="visibleWord(index, item)"
+                        :icon="item.visibility ? 'visibility' : 'visibility_off'"
                       />
-                      <q-badge
-                        rounded
-                        outline
-                        color="yellow"
-                        v-show="item.wordCheck.cnt > 0"
-                        :label="item.wordCheck.cnt"
+                      <q-btn
+                        round
+                        size="md"
+                        color="info"
+                        :outline="isKnow !== 1"
+                        @click="isKnow = 1"
+                        :disable="disableKnow"
+                      >
+                        <span style="font-size: xx-large">!</span>
+                      </q-btn>
+                      <q-btn
+                        round
+                        color="info"
+                        size="md"
+                        :outline="isKnow !== 2"
+                        @click="isKnow = 2"
+                        :disable="disableKnow"
+                      >
+                        <span style="font-size: xx-large">?</span>
+                      </q-btn>
+                    </div>
+                    <div v-else class="col-1.5 q-gutter-lg">
+                      <q-btn
+                        round
+                        size="md"
+                        color="grey-8"
+                        @click="visibleWord(index, item)"
+                        :icon="item.visibility ? 'visibility' : 'visibility_off'"
                       />
+                      <q-btn round color="grey-8" size="md" :outline="true">
+                        <span style="font-size: xx-large">!</span>
+                      </q-btn>
+                      <q-btn round color="grey-8" size="md" :outline="false">
+                        <span style="font-size: xx-large">?</span>
+                      </q-btn>
                     </div>
                   </div>
                 </q-item-section>
@@ -176,9 +205,7 @@
 
         <q-page-sticky position="bottom-right" :offset="[30, 30]">
           <div class="q-gutter-sm">
-            <q-badge v-show="played" outline align="middle" color="white"
-              >{{ playMinutes }}분 {{ playSeconds % 60 }}초</q-badge
-            >
+            <q-badge v-show="played" outline align="middle" color="white">{{}}</q-badge>
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -193,12 +220,11 @@
 </template>
 
 <script>
-import { ref, toRefs, watch, nextTick, computed, onMounted } from "vue";
+import { ref, toRefs, reactive, watch, computed, onMounted } from "vue";
 import { throttle, useQuasar } from "quasar";
 import XLSX from "xlsx";
 import {
   loading,
-  baseStatus,
   status,
   books,
   oBook,
@@ -206,6 +232,8 @@ import {
   oDifficulity,
   words,
   display,
+  playTimes,
+  txtTimes,
   db,
 } from "../../common/db";
 
@@ -219,51 +247,28 @@ export default {
       else $q.loading.hide();
     });
 
-    const {
-      book,
-      step,
-      difficulty,
-      playSeconds,
-      wordGap,
-      currentIndex,
-      readRound,
-    } = toRefs(status);
+    const { book, step, difficulty, wordGap, lastNo, round, unitCnt, auto } = toRefs(
+      status
+    );
+    const lastIdx = computed({
+      get: () => lastNo.value - 1,
+      set: (v) => (lastNo.value = v + 1),
+    });
 
-    const playMinutes = computed({
-      get: () => Math.floor(playSeconds.value / 60),
-      set: (val) => {
-        playSeconds.value = val * 60 + (playSeconds.value % 60);
-      },
-    });
-    const inputPm = ref(null);
-    let intervalId = 0;
-    watch(playSeconds, (pm) => {
-      if (pm <= 0 || isNaN(pm)) {
-        clearInterval(intervalId);
-        playSeconds.value = baseStatus.value.playSeconds;
-        played.value = false;
-        inputPm.value.blur();
-      }
-    });
     const unit = computed(() =>
-      words.value.length === 0 ? 0 : words.value[currentIndex.value].unit || 0
+      words.value.length === 0 ? 0 : words.value[lastIdx.value].unit || 0
     );
 
     const assign = (t, o) => {
       if (!o) return;
       for (let k of Object.keys(t)) if (o[k] !== undefined) t[k] = o[k];
     };
-    onMounted(async () => {
-      assign(status, await db.finalStatus.get({ id: 1 }));
-    });
-
-    const checked = ref(false);
 
     const virtualListRef = ref(null);
     const setAudio = (cnt) => {
       cnt = cnt || 10;
       let w;
-      for (let i = currentIndex.value; i < words.value.length; i++) {
+      for (let i = lastIdx.value; i < words.value.length; i++) {
         if (cnt === 0) break;
         w = words.value[i];
         if (w.readable) {
@@ -274,15 +279,15 @@ export default {
     };
     watch(words, () => {
       setTimeout(() => {
-        words.value[currentIndex.value].focused = true;
-        virtualListRef.value.scrollTo(currentIndex.value, "center-force");
+        words.value[lastIdx.value].focused = true;
+        virtualListRef.value.scrollTo(lastIdx.value, "center-force");
       }, 500);
     });
-    watch(currentIndex, (n, o) => {
+    watch(lastNo, (n, o) => {
       const ow = words.value[o];
       if (ow) {
         ow.focused = false;
-        if (!ow.checked) ow.display = Object.assign({}, display.value.default);
+        if (!ow.visibility) ow.display = Object.assign({}, display.value.default);
       }
       const nw = words.value[n];
       if (!nw) return;
@@ -291,70 +296,94 @@ export default {
       if (virtualListRef.value) virtualListRef.value.scrollTo(n, "center-force");
     });
 
-    const played = ref(false);
     const drawerRight = ref(false);
+    const played = ref(false);
     const play = throttle(() => {
       played.value = !played.value;
       if (played.value) drawerRight.value = false;
     }, 3000);
     const playIdx = { first: 0, last: 0 };
 
+    const isKnow = ref(0);
+    const disableKnow = ref(true);
+
+    let intervalId;
     watch(played, async (p) => {
-      if (words.value.length <= currentIndex.value) currentIndex.value = 0;
+      if (words.value.length <= lastIdx.value) lastIdx.value = 0;
       let w;
       if (!p) {
         clearInterval(intervalId);
-        loading.value = true;
-        for (let i = playIdx.first; i <= playIdx.last; i++) {
-          w = words.value[i];
-          let wc = w.wordCheck;
-          if (step.value === "1-4") {
-            if (w.checked) {
-              w.checked = false;
-            } else {
-              wc.cnt++;
-              wc.showRound = readRound.value + wc.cnt + 1;
-              await db.wordChecks.put(Object.assign({}, wc));
-            }
-          }
-        }
-        loading.value = false;
         return;
       }
 
-      intervalId = setInterval(() => (playSeconds.value -= 1), 1000);
-      words.value[currentIndex.value].focused = true;
-      virtualListRef.value.scrollTo(currentIndex.value, "center-force");
+      let stopWatch;
+      intervalId = setInterval(() => playTimes.seconds++, 1000);
+      words.value[lastIdx.value].focused = true;
+      virtualListRef.value.scrollTo(lastIdx.value, "center-force");
       try {
         setAudio();
-        playIdx.first = currentIndex.value;
+        playIdx.first = lastIdx.value;
         while (played.value) {
-          if (words.value.length <= currentIndex.value) {
+          if (words.value.length <= lastIdx.value) {
             played.value = false;
-            currentIndex.value = 0;
-            readRound.value++;
+            lastIdx.value = 0;
+            round.value++;
             break;
           }
 
-          w = words.value[currentIndex.value];
+          w = words.value[lastIdx.value];
           if (!w.readable) {
-            currentIndex.value++;
+            lastIdx.value++;
             continue;
           }
 
+          isKnow.value = 0;
+          disableKnow.value = true;
           await new Promise((resolve, reject) => {
             w.audio.addEventListener("ended", () => {
-              setTimeout(
-                resolve,
-                Math.ceil(w.audio.duration * 1000) + wordGap.value * 1000
-              );
+              disableKnow.value = false;
+              if (auto.value) {
+                setTimeout(
+                  resolve,
+                  Math.ceil(w.audio.duration * 1000) + wordGap.value * 1000
+                );
+              } else {
+                stopWatch = watch(isKnow, () => {
+                  resolve();
+                });
+              }
             });
             w.audio.addEventListener("error", reject);
             w.audio.play();
           });
+          if (!auto.value) {
+            stopWatch();
+          }
+          if (isKnow.value === 1) w.wordCheck.knowCnt++;
+          else if (isKnow.value === 2) w.wordCheck.unknowCnt++;
 
-          currentIndex.value++;
-          playIdx.last = currentIndex.value;
+          playIdx.last = lastIdx.value;
+          loading.value = true;
+          for (let i = playIdx.first; i <= playIdx.last; i++) {
+            w = words.value[i];
+            let wc = w.wordCheck;
+            wc.showRound = round.value + wc.cnt + 1;
+            await db.wordChecks.put(Object.assign({}, wc));
+          }
+          await db.playedTimes.put(
+            Object.assign(
+              {},
+              {
+                book: book.value,
+                step: step.value,
+                difficulty: difficulty.value,
+                round: round.value,
+              },
+              playTimes
+            )
+          );
+          loading.value = false;
+          lastIdx.value++;
           setAudio(1);
         }
       } catch (e) {
@@ -363,10 +392,9 @@ export default {
       }
     });
 
-    const checkWord = (i, w) => {
-      if (i > currentIndex.value) return;
-      w.checked = !w.checked;
-      if (w.checked) {
+    const visibleWord = (i, w) => {
+      w.visibility = !w.visibility;
+      if (w.visibility) {
         for (let k in w.display) w.display[k] = true;
       } else {
         w.display = Object.assign({}, display.value[w.focused ? "focus" : "default"]);
@@ -449,31 +477,33 @@ export default {
     };
 
     return {
+      auto,
       book,
       step,
       difficulty,
-      playSeconds,
       wordGap,
-      currentIndex,
-      readRound,
+      lastNo,
+      round,
+      unitCnt,
       oBook,
       books,
       oStep,
       oDifficulity,
-      playMinutes,
       display,
-      checked,
       played,
       play,
-      inputPm,
+      playTimes,
+      txtTimes,
       unit,
       words,
-      checkWord,
+      visibleWord,
       virtualListRef,
       parseXlsx,
       downXlsx,
       initDB,
       drawerRight,
+      isKnow,
+      disableKnow,
       downSec: () => {
         let tmp = Number((wordGap.value - 0.1).toFixed(1));
         if (tmp < -0.5) tmp = -0.5;

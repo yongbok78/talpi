@@ -314,48 +314,15 @@ const displays = {
 
 const db = new Dexie("talpi");
 db.version(1).stores({
-  finalStatus: `&id, book, step, difficulty, playMiliseconds, wordGap, currentIndex, readRound`,
-  baseStatuses: `&id, [book+step+difficulty], playMiliseconds, wordGap, currentIndex, readRound`,
-  lastStatuses: `&id, [book+step+difficulty], playMiliseconds, wordGap, currentIndex, readRound`,
-  words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, isHard, isCore`,
-  wordChecks: `[wordId+book+step+difficulty], cnt, showRound`,
-});
-
-db.version(2)
-  .stores({
-    finalStatus: `&id, book, step, difficulty, playSeconds, wordGap, currentIndex, readRound`,
-    baseStatuses: `&id, [book+step+difficulty], playSeconds, wordGap, currentIndex, readRound`,
-    lastStatuses: `&id, [book+step+difficulty], playSeconds, wordGap, currentIndex, readRound`,
-    words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, isHard, isCore`,
-    wordChecks: `[wordId+book+step+difficulty], cnt, showRound`,
-  })
-  .upgrade(async (tx) => {
-    await tx
-      .table("finalStatus")
-      .toCollection()
-      .modify((s) => {
-        s.playSeconds = Math.ceil(s.playMiliseconds / 1000);
-        delete s.playMiliseconds;
-      });
-    await tx
-      .table("baseStatuses")
-      .toCollection()
-      .modify((s) => {
-        s.playSeconds = Math.ceil(s.playMiliseconds / 1000);
-        delete s.playMiliseconds;
-      });
-    return await tx
-      .table("lastStatuses")
-      .toCollection()
-      .modify((s) => {
-        s.playSeconds = Math.ceil(s.playMiliseconds / 1000);
-        delete s.playMiliseconds;
-      });
-  });
-
-db.version(3).stores({
+  finalStatus: `&id, book, step, difficulty, wordGap, lastNo, round, auto, unitCnt`,
+  baseStatuses: `&id, [book+step+difficulty], wordGap, lastNo, round, auto, unitCnt`,
+  lastStatuses: `&id, [book+step+difficulty], wordGap, lastNo, round, auto, unitCnt`,
   words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, unit, isHard, isCore`,
+  wordChecks: `[wordId+book+step+difficulty], knowCnt, unknowCnt, showRound`,
+  playedTimes:
+    "[book+step+difficulty+round], seconds, minutes, hours, days, months, years",
 });
+
 let idCnt = 1;
 let baseStatuses = [];
 for (let b in books) {
@@ -366,10 +333,11 @@ for (let b in books) {
         book: books[b].value,
         step: s.value,
         difficulty: d.value,
-        playSeconds: 1500,
         wordGap: 1.5,
-        currentIndex: 0,
-        readRound: 0,
+        lastNo: 1,
+        round: 1,
+        auto: false,
+        unitCnt: 5,
       });
     }
   }
@@ -387,17 +355,22 @@ db.finalStatus.get({ id: 1 }).then((o) => {
       book: "beginner2",
       step: "1-4",
       difficulty: 1,
-      playSeconds: 1500,
       wordGap: 1.5,
-      currentIndex: 0,
-      readRound: 9,
+      lastNo: 1,
+      round: 10,
+      auto: false,
+      unitCnt: 5,
     });
+  else {
+    assign(status, o);
+  }
 });
 
 const assign = (t, o) => {
+  if (!o) return;
   for (let k in t)
     try {
-      t[k] = o[k];
+      if (o[k] !== undefined) t[k] = o[k];
     } catch (e) {
       console.log("assign", e.message);
     }
@@ -407,10 +380,11 @@ const status = reactive({
   book: "beginner",
   step: "1-1",
   difficulty: 0,
-  playSeconds: 1500,
   wordGap: 1.5,
-  currentIndex: 0,
-  readRound: 0,
+  lastNo: 1,
+  round: 1,
+  auto: false,
+  unitCnt: 5,
 });
 const oBook = computed({
   get: () => books.find((o) => o.value === status.book),
@@ -471,17 +445,7 @@ watch(
           step: n.step,
           difficulty: n.difficulty,
         })
-        .modify(
-          Object.assign(
-            {
-              playSeconds: null,
-              wordGap: null,
-              currentIndex: null,
-              readRound: null,
-            },
-            n
-          )
-        );
+        .modify(Object.assign({}, n));
     }
   }
 );
@@ -530,10 +494,14 @@ watch(
       wc.wordId = w.id;
       w.wordCheck =
         wcs[w.id] ||
-        Object.assign({}, wc, { cnt: 0, showRound: status.readRound });
-      w.readable = w.wordCheck.showRound <= status.readRound;
+        Object.assign({}, wc, {
+          knowCnt: 0,
+          unknowCnt: 0,
+          showRound: status.round,
+        });
+      w.readable = w.wordCheck.showRound <= status.round;
       w.display = Object.assign({}, display.value.default);
-      w.checked = false;
+      w.visibility = false;
     }
     loading.value = false;
     words.value = ws;
@@ -561,6 +529,65 @@ const display = computed({
   set: (o) => (displays[status.step] = o),
 });
 
+const playTimes = reactive({
+  seconds: 0,
+  minutes: 0,
+  hours: 0,
+  days: 0,
+  months: 0,
+  years: 0,
+});
+const txtTimes = computed(() => {
+  let times = ` ${playTimes.years}년 ${playTimes.months}월 ${playTimes.days}일 ${playTimes.hours}시 ${playTimes.minutes}분 ${playTimes.seconds}초`;
+  times = times.replace(/ 0[년월일시분]/g, "");
+  if (/[년월일시분]/.test(times)) times = times.replace(" 0초", "");
+  return times.trim();
+});
+watch(playTimes, (v) => {
+  if (v.seconds === 60) {
+    v.seconds = 0;
+    v.minutes++;
+  }
+  if (v.minutes === 60) {
+    v.minutes = 0;
+    v.hours++;
+  }
+  if (v.hours === 24) {
+    v.hours = 0;
+    v.days++;
+  }
+  if (v.days === 30) {
+    v.days = 0;
+    v.months++;
+  }
+  if (v.months === 12) {
+    v.months = 0;
+    v.years++;
+  }
+});
+watch(
+  () => {
+    return {
+      book: status.book,
+      step: status.step,
+      difficulty: status.difficulty,
+      round: status.round,
+    };
+  },
+  async (n) => {
+    assign(
+      playTimes,
+      (await db.playedTimes.get(n)) || {
+        seconds: 0,
+        minutes: 0,
+        hours: 0,
+        days: 0,
+        months: 0,
+        years: 0,
+      }
+    );
+  }
+);
 export default db;
 export {
   loading,
@@ -572,5 +599,7 @@ export {
   oDifficulity,
   words,
   display,
+  playTimes,
+  txtTimes,
   db,
 };
