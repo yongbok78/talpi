@@ -314,9 +314,9 @@ const displays = {
 
 const db = new Dexie("talpi");
 db.version(1).stores({
-  finalStatus: `&id, book, step, difficulty, wordGap, lastNo, round, auto, unitCnt`,
-  baseStatuses: `&id, [book+step+difficulty], wordGap, lastNo, round, auto, unitCnt`,
-  lastStatuses: `&id, [book+step+difficulty], wordGap, lastNo, round, auto, unitCnt`,
+  finalStatus: `&id, book, step, difficulty, wordGap, lastIdx, round, auto, unitCnt`,
+  baseStatuses: `&id, [book+step+difficulty], wordGap, lastIdx, round, auto, unitCnt`,
+  lastStatuses: `&id, [book+step+difficulty], wordGap, lastIdx, round, auto, unitCnt`,
   words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, unit, isHard, isCore`,
   wordChecks: `[wordId+book+step+difficulty], knowCnt, unknowCnt, showRound`,
   playedTimes:
@@ -334,7 +334,7 @@ for (let b in books) {
         step: s.value,
         difficulty: d.value,
         wordGap: 1.5,
-        lastNo: 1,
+        lastIdx: 0,
         round: 1,
         auto: false,
         unitCnt: 5,
@@ -356,7 +356,7 @@ db.finalStatus.get({ id: 1 }).then((o) => {
       step: "1-4",
       difficulty: 1,
       wordGap: 1.5,
-      lastNo: 1,
+      lastIdx: 0,
       round: 10,
       auto: false,
       unitCnt: 5,
@@ -381,7 +381,7 @@ const status = reactive({
   step: "1-1",
   difficulty: 0,
   wordGap: 1.5,
-  lastNo: 1,
+  lastIdx: 0,
   round: 1,
   auto: false,
   unitCnt: 5,
@@ -502,6 +502,7 @@ watch(
       w.readable = w.wordCheck.showRound <= status.round;
       w.display = Object.assign({}, display.value.default);
       w.visibility = false;
+      w.focused = false;
     }
     loading.value = false;
     words.value = ws;
