@@ -114,10 +114,37 @@
                 <q-item-section>
                   <audio
                     :ref="(el) => (words[index].audio = el)"
+                    v-if="item.readable"
+                    :src="
+                      '/mp3/beginner2/' + item.id.toString().padStart(5, '0') + '.mp3'
+                    "
                     type="audio/mpeg"
                     crossorigin="anonymous"
                   ></audio>
                   <div class="row items-center">
+                    <div class="col-0">
+                      <div class="row no-wrap">
+                        <q-btn
+                          v-if="!played"
+                          flat
+                          size="md"
+                          icon="edit"
+                          class="col"
+                          @click="editWord($event.target.getBoundingClientRect(), item)"
+                        ></q-btn>
+                        <q-btn
+                          v-if="!item.readable"
+                          flat
+                          size="md"
+                          icon="skip_next"
+                          class="col"
+                        >
+                          <q-badge color="grey-8" floating style="color: white">
+                            {{ item.wordCheck.showRound }}
+                          </q-badge>
+                        </q-btn>
+                      </div>
+                    </div>
                     <div class="col-4 text-right" style="padding-right: 15px">
                       <div class="ht21"></div>
                       <div class="text-h5 ht32">
@@ -139,9 +166,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="item.display.category">
-                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
-                        </span>
+                        <span v-show="item.display.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -169,6 +196,13 @@
                         :disable="disableKnow"
                       >
                         <span style="font-size: xx-large">!</span>
+                        <q-badge
+                          color="grey-8"
+                          floating
+                          style="color: white"
+                          v-show="item.wordCheck.knowCnt > 0"
+                          >{{ item.wordCheck.knowCnt }}</q-badge
+                        >
                       </q-btn>
                       <q-btn
                         round
@@ -177,8 +211,16 @@
                         :outline="isKnow !== 2"
                         @click="isKnow = 2"
                         :disable="disableKnow"
+                        v-show="!auto"
                       >
                         <span style="font-size: xx-large">?</span>
+                        <q-badge
+                          color="grey-8"
+                          floating
+                          style="color: white"
+                          v-show="item.wordCheck.unknowCnt > 0"
+                          >{{ item.wordCheck.unknowCnt }}</q-badge
+                        >
                       </q-btn>
                     </div>
                     <div v-else class="col-1.5 q-gutter-lg">
@@ -189,11 +231,32 @@
                         @click="visibleWord(index, item)"
                         :icon="item.visibility ? 'visibility' : 'visibility_off'"
                       />
-                      <q-btn round color="grey-8" size="md" :outline="true">
+                      <q-btn round color="grey-8" size="md" outline disable>
                         <span style="font-size: xx-large">!</span>
+                        <q-badge
+                          color="grey-8"
+                          floating
+                          style="color: white"
+                          v-show="item.wordCheck.knowCnt > 0"
+                          >{{ item.wordCheck.knowCnt }}</q-badge
+                        >
                       </q-btn>
-                      <q-btn round color="grey-8" size="md" :outline="false">
+                      <q-btn
+                        round
+                        color="grey-8"
+                        size="md"
+                        outline
+                        disable
+                        v-show="!auto"
+                      >
                         <span style="font-size: xx-large">?</span>
+                        <q-badge
+                          color="grey-8"
+                          floating
+                          style="color: white"
+                          v-show="item.wordCheck.unknowCnt > 0"
+                          >{{ item.wordCheck.unknowCnt }}</q-badge
+                        >
                       </q-btn>
                     </div>
                   </div>
@@ -205,7 +268,16 @@
 
         <q-page-sticky position="bottom-right" :offset="[30, 30]">
           <div class="q-gutter-sm">
-            <q-badge v-show="played" outline align="middle" color="white">{{}}</q-badge>
+            <q-btn
+              v-show="!played"
+              fab
+              icon="gps_fixed"
+              @click="gotoLastIdx"
+              color="primary"
+            />
+            <q-badge v-show="played" outline align="middle" color="white">
+              {{ txtTimes }}
+            </q-badge>
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -217,15 +289,35 @@
       </q-page>
     </q-page-container>
   </q-layout>
+  <div
+    v-if="editorInfo.show"
+    style="position: fixed; width: 90vw"
+    :style="{ top: editorInfo.top, left: editorInfo.left }"
+    class="bg-black glossy"
+  >
+    <div class="row" style="margin: 10px">
+      <q-btn flat size="md" icon="check" @click="saveWord(editorInfo.word)" />
+      <q-input label="단어" v-model="editorInfo.word.word" />
+      <q-input label="단어2" v-model="editorInfo.word.word2" />
+      <q-input label="품사" v-model="editorInfo.word.partOfSpeech" />
+      <q-input label="핵심" v-model="editorInfo.word.isCore" />
+      <q-input label="난이도" v-model="editorInfo.word.isHard" />
+      <q-input label="분류" v-model="editorInfo.word.category" />
+      <q-input label="힌트" v-model="editorInfo.word.hint" />
+      <q-input label="의미" v-model="editorInfo.word.meaning" />
+      <q-input label="의미2" v-model="editorInfo.word.meaning2" />
+    </div>
+  </div>
 </template>
 
 <script>
-import { ref, toRefs, reactive, watch, computed, onMounted } from "vue";
+import { ref, toRefs, reactive, watch, computed, onMounted, nextTick } from "vue";
 import { throttle, useQuasar } from "quasar";
 import XLSX from "xlsx";
 import {
   loading,
   status,
+  baseStatus,
   books,
   oBook,
   oStep,
@@ -247,17 +339,30 @@ export default {
       else $q.loading.hide();
     });
 
-    const { book, step, difficulty, wordGap, lastNo, round, unitCnt, auto } = toRefs(
+    const { book, step, difficulty, wordGap, lastIdx, round, unitCnt, auto } = toRefs(
       status
     );
-    const lastIdx = computed({
-      get: () => lastNo.value - 1,
-      set: (v) => (lastNo.value = v + 1),
+    const lastNo = computed({
+      get: () => lastIdx.value + 1,
+      set: (v) => (lastIdx.value = v < 1 ? 0 : v - 1),
     });
+    const gotoLastIdx = () =>
+      virtualListRef.value.scrollTo(lastIdx.value, "center-force");
 
     const unit = computed(() =>
-      words.value.length === 0 ? 0 : words.value[lastIdx.value].unit || 0
+      words.value.length === 0 ? 1 : (words.value[lastIdx.value] || { unit: 1 }).unit
     );
+    watch(unit, (v) => {
+      if (played.value) unitCnt.value--;
+    });
+    watch(unitCnt, (v) => {
+      if (v <= 0) {
+        nextTick(() => {
+          played.value = false;
+          unitCnt.value = baseStatus.value.unitCnt;
+        });
+      }
+    });
 
     const assign = (t, o) => {
       if (!o) return;
@@ -265,25 +370,13 @@ export default {
     };
 
     const virtualListRef = ref(null);
-    const setAudio = (cnt) => {
-      cnt = cnt || 10;
-      let w;
-      for (let i = lastIdx.value; i < words.value.length; i++) {
-        if (cnt === 0) break;
-        w = words.value[i];
-        if (w.readable) {
-          w.audio.src = `/mp3/beginner2/${w.id.toString().padStart(5, "0")}.mp3`;
-          cnt--;
-        }
-      }
-    };
-    watch(words, () => {
+    watch(words, (ws) => {
       setTimeout(() => {
-        words.value[lastIdx.value].focused = true;
+        ws[lastIdx.value].focused = true;
         virtualListRef.value.scrollTo(lastIdx.value, "center-force");
       }, 500);
     });
-    watch(lastNo, (n, o) => {
+    watch(lastIdx, (n, o) => {
       const ow = words.value[o];
       if (ow) {
         ow.focused = false;
@@ -298,42 +391,39 @@ export default {
 
     const drawerRight = ref(false);
     const played = ref(false);
-    const play = throttle(() => {
-      played.value = !played.value;
-      if (played.value) drawerRight.value = false;
-    }, 3000);
     const playIdx = { first: 0, last: 0 };
-
     const isKnow = ref(0);
     const disableKnow = ref(true);
 
     let intervalId;
-    watch(played, async (p) => {
-      if (words.value.length <= lastIdx.value) lastIdx.value = 0;
-      let w;
-      if (!p) {
+    const play = throttle(async () => {
+      played.value = !played.value;
+      if (!played.value) {
         clearInterval(intervalId);
+        if (!auto.value) {
+          setTimeout(() => {
+            if (isKnow.value === 0) isKnow.value = 2;
+          }, 2000);
+        }
         return;
       }
 
-      let stopWatch;
-      intervalId = setInterval(() => playTimes.seconds++, 1000);
+      drawerRight.value = false;
       words.value[lastIdx.value].focused = true;
       virtualListRef.value.scrollTo(lastIdx.value, "center-force");
+      await nextTick();
+
+      intervalId = setInterval(() => playTimes.seconds++, 1000);
+      let w;
+      let stopWatch;
       try {
-        setAudio();
         playIdx.first = lastIdx.value;
         while (played.value) {
-          if (words.value.length <= lastIdx.value) {
-            played.value = false;
-            lastIdx.value = 0;
-            round.value++;
-            break;
-          }
-
           w = words.value[lastIdx.value];
           if (!w.readable) {
             lastIdx.value++;
+            await nextTick();
+            await new Promise((r) => setTimeout(() => r(), 5));
             continue;
           }
 
@@ -359,38 +449,48 @@ export default {
           if (!auto.value) {
             stopWatch();
           }
-          if (isKnow.value === 1) w.wordCheck.knowCnt++;
+          if (auto.value && isKnow.value === 0) w.wordCheck.unknowCnt++;
+          else if (isKnow.value === 1) w.wordCheck.knowCnt++;
           else if (isKnow.value === 2) w.wordCheck.unknowCnt++;
 
           playIdx.last = lastIdx.value;
-          loading.value = true;
-          for (let i = playIdx.first; i <= playIdx.last; i++) {
-            w = words.value[i];
-            let wc = w.wordCheck;
-            wc.showRound = round.value + wc.cnt + 1;
-            await db.wordChecks.put(Object.assign({}, wc));
-          }
-          await db.playedTimes.put(
-            Object.assign(
-              {},
-              {
-                book: book.value,
-                step: step.value,
-                difficulty: difficulty.value,
-                round: round.value,
-              },
-              playTimes
-            )
-          );
-          loading.value = false;
           lastIdx.value++;
-          setAudio(1);
+          await nextTick();
+          if (words.value.length === lastIdx.value) {
+            played.value = false;
+            lastIdx.value = 0;
+            round.value++;
+            await nextTick();
+            break;
+          }
         }
+
+        loading.value = true;
+        for (let i = playIdx.first; i <= playIdx.last; i++) {
+          w = words.value[i];
+          let wc = w.wordCheck;
+          wc.showRound = round.value + wc.knowCnt + 1;
+          await db.wordChecks.put(Object.assign({}, wc));
+        }
+        await db.playedTimes.put(
+          Object.assign(
+            {},
+            {
+              book: book.value,
+              step: step.value,
+              difficulty: difficulty.value,
+              round: round.value,
+            },
+            playTimes
+          )
+        );
+        await nextTick();
+        loading.value = false;
       } catch (e) {
         played.value = false;
         console.log(e);
       }
-    });
+    }, 3000);
 
     const visibleWord = (i, w) => {
       w.visibility = !w.visibility;
@@ -476,6 +576,26 @@ export default {
       req.send();
     };
 
+    const editorInfo = reactive({
+      show: false,
+      top: "0",
+      left: "0",
+      word: null,
+    });
+    const editWord = (p, w) => {
+      editorInfo.top = Math.ceil(p.top) + "px";
+      editorInfo.left = Math.ceil(p.left) + "px";
+      editorInfo.word = w;
+      editorInfo.show = true;
+    };
+    const saveWord = (w) => {
+      editorInfo.show = false;
+
+      db.words.get(w.id).then((item) => {
+        assign(item, w);
+        db.words.put(item);
+      });
+    };
     return {
       auto,
       book,
@@ -504,12 +624,16 @@ export default {
       drawerRight,
       isKnow,
       disableKnow,
+      gotoLastIdx,
       downSec: () => {
         let tmp = Number((wordGap.value - 0.1).toFixed(1));
         if (tmp < -0.5) tmp = -0.5;
         wordGap.value = tmp;
       },
       upSec: () => (wordGap.value = Number((wordGap.value + 0.1).toFixed(1))),
+      editorInfo,
+      editWord,
+      saveWord,
     };
   },
 };
