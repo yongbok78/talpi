@@ -318,9 +318,9 @@ db.version(1).stores({
   baseStatuses: `&id, [book+step+difficulty], wordGap, lastIdx, round, auto, unitCnt`,
   lastStatuses: `&id, [book+step+difficulty], wordGap, lastIdx, round, auto, unitCnt`,
   words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, unit, isHard, isCore`,
-  wordChecks: `[wordId+book+step+difficulty], knowCnt, unknowCnt, showRound`,
-  playedTimes:
-    "[book+step+difficulty+round], seconds, minutes, hours, days, months, years",
+  checkingWords: `[wordId+book+step+difficulty], knowCnt, nextRound`,
+  checkWords: `[wordId+book+step+difficulty], knowCnt, nextRound`,
+  playedTimes: "[book+step+difficulty+round], seconds, minutes, hours, days",
 });
 
 let idCnt = 1;
@@ -457,55 +457,58 @@ db.baseStatuses.toArray().then((a) => {
 });
 
 const words = ref([]);
+const getWords = async (bookVal, difficultyVal) => {
+  const a = [bookVal, difficultyVal];
+  let col;
+  if (a[1] !== 0) {
+    let w = {};
+    w[/[12]/.test(a[1].toString()) ? "isHard" : "isCore"] = /[23]/.test(
+      a[1].toString()
+    )
+      ? "Y"
+      : "N";
+    col = db.words.where(w);
+  } else col = db.words.toCollection();
+  // 전체 조회
+  const ws = await col.sortBy(`${a[0]}_loc`);
+  let wc = {
+    book: status.book,
+    step: status.step,
+    difficulty: status.difficulty,
+  };
+  let wcs = await db.checkWords
+    .filter(
+      (o) =>
+        o.book === status.book &&
+        o.step === status.step &&
+        o.difficulty === status.difficulty
+    )
+    .toArray();
+  wcs = wcs.reduce((result, v) => {
+    result[v.wordId] = v;
+    return result;
+  }, {});
+  for (let w of ws) {
+    wc.wordId = w.id;
+    w.wordCheck =
+      wcs[w.id] ||
+      Object.assign({}, wc, {
+        knowCnt: 0,
+        nextRound: status.round,
+      });
+    w.willPlay = w.wordCheck.nextRound <= status.round;
+    w.display = Object.assign({}, display.value.default);
+    w.visibility = false;
+    w.focused = false;
+  }
+  return ws;
+};
 watch(
   () => [status.book, status.difficulty],
   async (a) => {
     loading.value = true;
-    let col;
-    if (a[1] !== 0) {
-      let w = {};
-      w[/[12]/.test(a[1].toString()) ? "isHard" : "isCore"] = /[23]/.test(
-        a[1].toString()
-      )
-        ? "Y"
-        : "N";
-      col = db.words.where(w);
-    } else col = db.words.toCollection();
-    // 전체 조회
-    const ws = await col.sortBy(`${a[0]}_loc`);
-    let wc = {
-      book: status.book,
-      step: status.step,
-      difficulty: status.difficulty,
-    };
-    let wcs = await db.wordChecks
-      .filter(
-        (o) =>
-          o.book === status.book &&
-          o.step === status.step &&
-          o.difficulty === status.difficulty
-      )
-      .toArray();
-    wcs = wcs.reduce((result, v) => {
-      result[v.wordId] = v;
-      return result;
-    }, {});
-    for (let w of ws) {
-      wc.wordId = w.id;
-      w.wordCheck =
-        wcs[w.id] ||
-        Object.assign({}, wc, {
-          knowCnt: 0,
-          unknowCnt: 0,
-          showRound: status.round,
-        });
-      w.readable = w.wordCheck.showRound <= status.round;
-      w.display = Object.assign({}, display.value.default);
-      w.visibility = false;
-      w.focused = false;
-    }
+    words.value = await getWords(a[0], a[1]);
     loading.value = false;
-    words.value = ws;
   }
 );
 
@@ -539,9 +542,9 @@ const playTimes = reactive({
   years: 0,
 });
 const txtTimes = computed(() => {
-  let times = ` ${playTimes.years}년 ${playTimes.months}월 ${playTimes.days}일 ${playTimes.hours}시 ${playTimes.minutes}분 ${playTimes.seconds}초`;
-  times = times.replace(/ 0[년월일시분]/g, "");
-  if (/[년월일시분]/.test(times)) times = times.replace(" 0초", "");
+  let times = ` ${playTimes.days}일 ${playTimes.hours}시 ${playTimes.minutes}분 ${playTimes.seconds}초`;
+  times = times.replace(/ 0[일시분]/g, "");
+  if (/[일시분]/.test(times)) times = times.replace(" 0초", "");
   return times.trim();
 });
 watch(playTimes, (v) => {
@@ -556,14 +559,6 @@ watch(playTimes, (v) => {
   if (v.hours === 24) {
     v.hours = 0;
     v.days++;
-  }
-  if (v.days === 30) {
-    v.days = 0;
-    v.months++;
-  }
-  if (v.months === 12) {
-    v.months = 0;
-    v.years++;
   }
 });
 watch(
@@ -583,8 +578,6 @@ watch(
         minutes: 0,
         hours: 0,
         days: 0,
-        months: 0,
-        years: 0,
       }
     );
   }
@@ -599,6 +592,7 @@ export {
   oStep,
   oDifficulity,
   words,
+  getWords,
   display,
   playTimes,
   txtTimes,
