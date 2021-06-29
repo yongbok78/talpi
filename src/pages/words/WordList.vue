@@ -4,7 +4,11 @@
       <q-toolbar class="bg-primary glossy">
         <q-toolbar-title>
           {{ oBook.label }} Unit {{ unit }} {{ oStep.label }}단계
-          {{ oDifficulity.label }} {{ round }}회독
+          {{ oDifficulity.label }} {{ round }}회독 재생 {{ willPlayPer }}%({{
+            willPlayCnt
+          }}/{{ words.length }}) {{ round + 1 }}회독 재생 {{ willPlayNextPer }}%({{
+            willPlayNextCnt
+          }}/{{ words.length }})
         </q-toolbar-title>
         <q-toggle
           v-if="!played"
@@ -34,7 +38,14 @@
             @mousedown.left="upSec"
           />
         </div>
-        <q-btn v-if="!played" flat @click="drawerRight = !drawerRight" round dense icon="settings" />
+        <q-btn
+          v-if="!played"
+          flat
+          @click="drawerRight = !drawerRight"
+          round
+          dense
+          icon="settings"
+        />
       </q-toolbar>
     </q-header>
     <q-drawer side="right" v-model="drawerRight" bordered :breakpoint="500">
@@ -43,9 +54,18 @@
           <div class="q-gutter-y-md column">
             <q-select v-model="oBook" :options="books" label="책"></q-select>
             <q-select v-model="oStep" :options="oBook.steps" label="단계"></q-select>
-            <q-select v-model="oDifficulity" :options="oBook.difficulties" label="난이도"></q-select>
+            <q-select
+              v-model="oDifficulity"
+              :options="oBook.difficulties"
+              label="난이도"
+            ></q-select>
             <q-input label="회독" v-model.number="round" type="number" min="1" />
-            <q-input label="공부할 유닛수" v-model.number="unitCnt" type="number" min="0" />
+            <q-input
+              label="공부할 유닛수"
+              v-model.number="unitCnt"
+              type="number"
+              min="0"
+            />
             <q-input
               label="최종 단어위치"
               :hint="lastNo + '/' + words.length"
@@ -62,13 +82,16 @@
               step="0.1"
               min="-0.5"
             />
-            <q-btn @click="downXlsx" icon="file_download" class="glossy" color="teal">DB정보 엑셀 다운로드</q-btn>
+            <q-btn @click="downXlsx" icon="file_download" class="glossy" color="teal"
+              >DB정보 엑셀 다운로드</q-btn
+            >
             <q-btn
               @click="initDB"
               icon="settings_applications"
               class="glossy"
               color="accent"
-            >DB정보 초기화</q-btn>
+              >DB정보 초기화</q-btn
+            >
             <!-- <q-file
               label="단어추가"
               filled
@@ -119,7 +142,13 @@
                             )
                           "
                         ></q-btn>
-                        <q-btn v-if="!item.willPlay" flat size="md" icon="next_plan" class="col" />
+                        <q-btn
+                          v-if="!item.willPlay"
+                          flat
+                          size="md"
+                          icon="next_plan"
+                          class="col"
+                        />
                       </div>
                     </div>
                     <div class="col-4 text-right" style="padding-right: 15px">
@@ -138,13 +167,14 @@
                         size="xs"
                         color="grey-8"
                         v-show="item.display.partOfSpeech"
-                      >{{ item.partOfSpeech }}</q-btn>
+                        >{{ item.partOfSpeech }}</q-btn
+                      >
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span
-                          v-show="item.display.category"
-                        >{{ item.category || "" !== "" ? `[${item.category}]` : "" }}</span>
+                        <span v-show="item.display.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -203,7 +233,13 @@
                       >
                         <span style="font-size: xx-large">?</span>
                       </q-btn>
-                      <q-btn round color="grey-8" size="md" :outline="item.isKnow !== 1" disable>
+                      <q-btn
+                        round
+                        color="grey-8"
+                        size="md"
+                        :outline="item.isKnow !== 1"
+                        disable
+                      >
                         <span style="font-size: xx-large">!</span>
                       </q-btn>
                     </div>
@@ -216,13 +252,22 @@
 
         <q-page-sticky position="bottom-right" :offset="[30, 30]">
           <div class="q-gutter-sm">
-            <q-btn v-show="!played" fab icon="gps_fixed" @click="gotoLastIdx" color="primary" />
+            <q-btn
+              v-show="!played"
+              fab
+              icon="gps_fixed"
+              @click="gotoLastIdx"
+              color="primary"
+            />
             <q-badge v-show="played" outline align="middle" color="white">
-              {{
-              txtTimes
-              }}
+              {{ txtTimes }}
             </q-badge>
-            <q-btn fab :icon="played ? 'pause' : 'play_arrow'" @click="play" color="primary" />
+            <q-btn
+              fab
+              :icon="played ? 'pause' : 'play_arrow'"
+              @click="play"
+              color="primary"
+            />
           </div>
         </q-page-sticky>
       </q-page>
@@ -252,15 +297,7 @@
 </template>
 
 <script>
-import {
-  ref,
-  toRefs,
-  reactive,
-  watch,
-  computed,
-  onMounted,
-  nextTick
-} from "vue";
+import { ref, toRefs, reactive, watch, computed, onMounted, nextTick } from "vue";
 import { throttle, useQuasar } from "quasar";
 import XLSX from "xlsx";
 import {
@@ -272,11 +309,15 @@ import {
   oStep,
   oDifficulity,
   words,
+  willPlayCnt,
+  willPlayPer,
+  willPlayNextCnt,
+  willPlayNextPer,
   getWords,
   display,
   playTimes,
   txtTimes,
-  db
+  db,
 } from "../../common/db";
 
 export default {
@@ -289,19 +330,18 @@ export default {
       else $q.loading.hide();
     });
 
-    const { book, step, difficulty, wordGap, lastIdx, round, unitCnt, auto } =
-      toRefs(status);
+    const { book, step, difficulty, wordGap, lastIdx, round, unitCnt, auto } = toRefs(
+      status
+    );
     const lastNo = computed({
       get: () => lastIdx.value + 1,
-      set: (v) => (lastIdx.value = v < 1 ? 0 : v - 1)
+      set: (v) => (lastIdx.value = v < 1 ? 0 : v - 1),
     });
     const gotoLastIdx = () =>
       virtualListRef.value.scrollTo(lastIdx.value, "center-force");
 
     const unit = computed(() =>
-      words.value.length === 0
-        ? 1
-        : (words.value[lastIdx.value] || { unit: 1 }).unit
+      words.value.length === 0 ? 1 : (words.value[lastIdx.value] || { unit: 1 }).unit
     );
     watch(unit, (v) => {
       if (played.value) unitCnt.value--;
@@ -331,15 +371,13 @@ export default {
       const ow = words.value[o];
       if (ow) {
         ow.focused = false;
-        if (!ow.visibility)
-          ow.display = Object.assign({}, display.value.default);
+        if (!ow.visibility) ow.display = Object.assign({}, display.value.default);
       }
       const nw = words.value[n];
       if (!nw) return;
       nw.focused = true;
       nw.display = Object.assign({}, display.value.focus);
-      if (virtualListRef.value)
-        virtualListRef.value.scrollTo(n, "center-force");
+      if (virtualListRef.value) virtualListRef.value.scrollTo(n, "center-force");
     });
 
     const drawerRight = ref(false);
@@ -362,8 +400,6 @@ export default {
       }
 
       drawerRight.value = false;
-      words.value[lastIdx.value].focused = true;
-      virtualListRef.value.scrollTo(lastIdx.value, "center-force");
       await nextTick();
 
       intervalId = setInterval(() => playTimes.seconds++, 1000);
@@ -406,6 +442,7 @@ export default {
           if (isKnow.value === 1) {
             w.wordCheck.knowCnt++;
             w.isKnow = 1;
+            willPlayNextCnt.value--;
           } else {
             if (w.wordCheck.knowCnt > 0) w.wordCheck.knowCnt--;
             w.isKnow = 2;
@@ -444,7 +481,7 @@ export default {
               book: book.value,
               step: step.value,
               difficulty: difficulty.value,
-              round: round.value
+              round: round.value,
             },
             playTimes
           )
@@ -462,10 +499,7 @@ export default {
       if (w.visibility) {
         for (let k in w.display) w.display[k] = true;
       } else {
-        w.display = Object.assign(
-          {},
-          display.value[w.focused ? "focus" : "default"]
-        );
+        w.display = Object.assign({}, display.value[w.focused ? "focus" : "default"]);
       }
     };
 
@@ -515,7 +549,7 @@ export default {
         "words",
         "checkingWords",
         "checkWords",
-        "playedTimes"
+        "playedTimes",
       ];
       for (let nm of tNms) {
         let datas = await db[nm].toArray();
@@ -540,8 +574,7 @@ export default {
           if (nm === "words") {
             for (let w of datas) {
               for (let k in w) {
-                if (typeof w[k] === "string" && w[k].indexOf("'") > 0)
-                  w[k] = "'" + w[k];
+                if (typeof w[k] === "string" && w[k].indexOf("'") > 0) w[k] = "'" + w[k];
               }
             }
           }
@@ -557,7 +590,7 @@ export default {
       show: false,
       top: "0",
       left: "0",
-      word: null
+      word: null,
     });
     const editWord = (p, w) => {
       editorInfo.top = Math.ceil(p.top) + "px";
@@ -593,6 +626,10 @@ export default {
       txtTimes,
       unit,
       words,
+      willPlayCnt,
+      willPlayPer,
+      willPlayNextCnt,
+      willPlayNextPer,
       visibleWord,
       virtualListRef,
       parseXlsx,
@@ -610,9 +647,9 @@ export default {
       upSec: () => (wordGap.value = Number((wordGap.value + 0.1).toFixed(1))),
       editorInfo,
       editWord,
-      saveWord
+      saveWord,
     };
-  }
+  },
 };
 </script>
 

@@ -457,6 +457,16 @@ db.baseStatuses.toArray().then((a) => {
 });
 
 const words = ref([]);
+const willPlayCnt = ref(0);
+const willPlayPer = computed(() => {
+  if (words.value.length < 1) return 0;
+  return Math.round((willPlayCnt.value / words.value.length) * 100);
+});
+const willPlayNextCnt = ref(0);
+const willPlayNextPer = computed(() => {
+  if (!words.value || words.value.length < 1) return 0;
+  return Math.round((willPlayNextCnt.value / words.value.length) * 100);
+});
 const getWords = async (bookVal, difficultyVal) => {
   const a = [bookVal, difficultyVal];
   let col;
@@ -488,6 +498,9 @@ const getWords = async (bookVal, difficultyVal) => {
     result[v.wordId] = v;
     return result;
   }, {});
+
+  let nowCnt = 0;
+  let nextCnt = 0;
   for (let w of ws) {
     wc.wordId = w.id;
     w.wordCheck =
@@ -496,11 +509,18 @@ const getWords = async (bookVal, difficultyVal) => {
         knowCnt: 0,
         nextRound: status.round,
       });
-    w.willPlay = w.wordCheck.nextRound <= status.round;
+    if (w.wordCheck.nextRound <= status.round) {
+      nowCnt++;
+      w.willPlay = true;
+    }
+    if (w.wordCheck.nextRound <= status.round + 1) nextCnt++;
     w.display = Object.assign({}, display.value.default);
     w.visibility = false;
     w.focused = false;
   }
+  nextCnt -= await db.checkingWords.count();
+  willPlayCnt.value = nowCnt;
+  willPlayNextCnt.value = nextCnt;
   return ws;
 };
 watch(
@@ -592,6 +612,10 @@ export {
   oStep,
   oDifficulity,
   words,
+  willPlayCnt,
+  willPlayPer,
+  willPlayNextCnt,
+  willPlayNextPer,
   getWords,
   display,
   playTimes,
