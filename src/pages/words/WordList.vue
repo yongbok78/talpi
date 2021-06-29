@@ -130,6 +130,13 @@
                     <div class="col-0">
                       <div class="row no-wrap">
                         <q-btn
+                          round
+                          size="md"
+                          color="grey-8"
+                          @click="visibleWord(index, item)"
+                          :icon="item.visibility ? 'visibility' : 'visibility_off'"
+                        />
+                        <q-btn
                           v-if="!played"
                           flat
                           size="md"
@@ -172,9 +179,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="item.display.category">{{
-                          item.category || "" !== "" ? `[${item.category}]` : ""
-                        }}</span>
+                        <span v-show="item.display.category">
+                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
+                        </span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -188,11 +195,14 @@
                     <div v-if="item.focused" class="col-1.5 q-gutter-xs">
                       <q-btn
                         round
-                        color="info"
                         size="md"
-                        @click="visibleWord(index, item)"
-                        :icon="item.visibility ? 'visibility' : 'visibility_off'"
-                      />
+                        color="info"
+                        :outline="isKnow !== 1"
+                        @click="isKnow = 1"
+                        :disable="disableKnow"
+                      >
+                        <span style="font-size: xx-large">!</span>
+                      </q-btn>
                       <q-btn
                         round
                         color="info"
@@ -204,25 +214,17 @@
                       >
                         <span style="font-size: xx-large">?</span>
                       </q-btn>
-                      <q-btn
-                        round
-                        size="md"
-                        color="info"
-                        :outline="isKnow !== 1"
-                        @click="isKnow = 1"
-                        :disable="disableKnow"
-                      >
-                        <span style="font-size: xx-large">!</span>
-                      </q-btn>
                     </div>
                     <div v-else class="col-1.5 q-gutter-xs">
                       <q-btn
                         round
-                        size="md"
                         color="grey-8"
-                        @click="visibleWord(index, item)"
-                        :icon="item.visibility ? 'visibility' : 'visibility_off'"
-                      />
+                        size="md"
+                        :outline="item.isKnow !== 1"
+                        disable
+                      >
+                        <span style="font-size: xx-large">!</span>
+                      </q-btn>
                       <q-btn
                         round
                         color="grey-8"
@@ -232,15 +234,6 @@
                         v-show="!auto"
                       >
                         <span style="font-size: xx-large">?</span>
-                      </q-btn>
-                      <q-btn
-                        round
-                        color="grey-8"
-                        size="md"
-                        :outline="item.isKnow !== 1"
-                        disable
-                      >
-                        <span style="font-size: xx-large">!</span>
                       </q-btn>
                     </div>
                   </div>
@@ -259,9 +252,9 @@
               @click="gotoLastIdx"
               color="primary"
             />
-            <q-badge v-show="played" outline align="middle" color="white">
-              {{ txtTimes }}
-            </q-badge>
+            <q-badge v-show="played" outline align="middle" color="white">{{
+              txtTimes
+            }}</q-badge>
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -320,6 +313,11 @@ import {
   db,
 } from "../../common/db";
 
+const assign = (t, o) => {
+  if (!o) return;
+  for (let k of Object.keys(t)) if (o[k] !== undefined) t[k] = o[k];
+};
+
 export default {
   setup() {
     const $q = useQuasar();
@@ -337,30 +335,10 @@ export default {
       get: () => lastIdx.value + 1,
       set: (v) => (lastIdx.value = v < 1 ? 0 : v - 1),
     });
+    const virtualListRef = ref(null);
     const gotoLastIdx = () =>
       virtualListRef.value.scrollTo(lastIdx.value, "center-force");
 
-    const unit = computed(() =>
-      words.value.length === 0 ? 1 : (words.value[lastIdx.value] || { unit: 1 }).unit
-    );
-    watch(unit, (v) => {
-      if (played.value) unitCnt.value--;
-    });
-    watch(unitCnt, (v) => {
-      if (v <= 0) {
-        nextTick(() => {
-          played.value = false;
-          unitCnt.value = baseStatus.value.unitCnt;
-        });
-      }
-    });
-
-    const assign = (t, o) => {
-      if (!o) return;
-      for (let k of Object.keys(t)) if (o[k] !== undefined) t[k] = o[k];
-    };
-
-    const virtualListRef = ref(null);
     watch(words, (ws) => {
       setTimeout(() => {
         ws[lastIdx.value].focused = true;
@@ -380,17 +358,33 @@ export default {
       if (virtualListRef.value) virtualListRef.value.scrollTo(n, "center-force");
     });
 
-    const drawerRight = ref(false);
-    const played = ref(false);
     const playIdx = { first: 0, last: 0 };
     const isKnow = ref(0);
     const disableKnow = ref(true);
+    const drawerRight = ref(false);
+    const played = ref(false);
+    let intervalId = 0;
+    watch(played, (v) => {
+      clearInterval(intervalId);
+      if (v) intervalId = setInterval(() => playTimes.seconds++, 1000);
+    });
 
-    let intervalId;
+    const unit = computed(() =>
+      words.value.length === 0 ? 1 : (words.value[lastIdx.value] || { unit: 1 }).unit
+    );
+    watch(unit, () => {
+      if (played.value) {
+        unitCnt.value--;
+        if (unitCnt.value <= 0) {
+          played.value = false;
+          unitCnt.value = baseStatus.value.unitCnt;
+        }
+      }
+    });
+
     const play = throttle(async () => {
       played.value = !played.value;
       if (!played.value) {
-        clearInterval(intervalId);
         if (!auto.value) {
           setTimeout(() => {
             if (isKnow.value === 0) isKnow.value = 2;
@@ -402,7 +396,6 @@ export default {
       drawerRight.value = false;
       await nextTick();
 
-      intervalId = setInterval(() => playTimes.seconds++, 1000);
       let w;
       let stopWatch;
       try {
@@ -411,8 +404,6 @@ export default {
           w = words.value[lastIdx.value];
           if (!w.willPlay) {
             lastIdx.value++;
-            await nextTick();
-            await new Promise((r) => setTimeout(() => r(), 5));
             continue;
           }
 
@@ -452,6 +443,7 @@ export default {
           w.visibility = false;
           playIdx.last = lastIdx.value;
           lastIdx.value++;
+          await nextTick();
           if (words.value.length === lastIdx.value) {
             played.value = false;
             lastIdx.value = 0;
