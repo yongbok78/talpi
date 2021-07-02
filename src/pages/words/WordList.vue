@@ -179,9 +179,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="item.display.category">
-                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
-                        </span>
+                        <span v-show="item.display.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -252,9 +252,9 @@
               @click="gotoLastIdx"
               color="primary"
             />
-            <q-badge v-show="played" outline align="middle" color="white">{{
-              txtTimes
-            }}</q-badge>
+            <q-badge v-show="played" outline align="middle" color="white">
+              {{ txtTimes }}
+            </q-badge>
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -451,7 +451,10 @@ export default {
             break;
           }
         }
-
+      } catch (e) {
+        played.value = false;
+        console.log(e);
+      } finally {
         loading.value = true;
         for (let i = playIdx.first; i <= playIdx.last; i++) {
           w = words.value[i];
@@ -460,9 +463,10 @@ export default {
           wc.nextRound = round.value + wc.knowCnt + 1;
           await db.checkingWords.put(Object.assign({}, wc));
         }
-        if (words.value.length === playIdx.last + 1) {
+        if (words.value.length <= lastIdx.value) {
           await db.checkWords.bulkPut(await db.checkingWords.toArray());
           await db.checkingWords.clear();
+          lastIdx.value = 0;
           round.value++;
           words.value = await getWords(book.value, difficulty.value);
         }
@@ -480,9 +484,6 @@ export default {
         );
         await nextTick();
         loading.value = false;
-      } catch (e) {
-        played.value = false;
-        console.log(e);
       }
     }, 3000);
 
