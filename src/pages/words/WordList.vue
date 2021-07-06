@@ -243,7 +243,7 @@
           </q-virtual-scroll>
         </div>
 
-        <q-page-sticky position="bottom-right" :offset="[30, 30]">
+        <q-page-sticky position="bottom-right" :offset="[150, 50]">
           <div class="q-gutter-sm">
             <q-btn
               v-show="!played"
@@ -463,10 +463,9 @@ export default {
           wc.nextRound = round.value + wc.knowCnt + 1;
           await db.checkingWords.put(Object.assign({}, wc));
         }
-        if (words.value.length <= lastIdx.value) {
+        if (words.value.length <= playIdx.last + 1) {
           await db.checkWords.bulkPut(await db.checkingWords.toArray());
           await db.checkingWords.clear();
-          lastIdx.value = 0;
           round.value++;
           words.value = await getWords(book.value, difficulty.value);
         }
@@ -482,6 +481,8 @@ export default {
             playTimes
           )
         );
+        playIdx.first = 0;
+        playIdx.last = 0;
         await nextTick();
         loading.value = false;
       }
