@@ -467,10 +467,24 @@ const willPlayNextPer = computed(() => {
   if (!words.value || words.value.length < 1) return 0;
   return Math.round((willPlayNextCnt.value / words.value.length) * 100);
 });
-const getWords = async (bookVal, difficultyVal) => {
-  const a = [bookVal, difficultyVal];
+const getWords = async (bookVal, difficultyVal, stepVal) => {
+  const a = [bookVal, difficultyVal, stepVal];
   let col;
-  if (a[1] !== 0) {
+  if (a[2] === "1-5") {
+    let wordIds = (
+      await db.checkWords
+        .filter(
+          (o) =>
+            o.book === a[0] &&
+            o.step === "1-4" &&
+            o.difficulty === a[1] &&
+            o.knowCnt === 0
+        )
+        .toArray()
+    ).map((o) => o.wordId);
+    if (wordIds.length > 0) col = db.words.where("id").anyOf(wordIds);
+    else col = db.words.toCollection();
+  } else if (a[1] !== 0) {
     let w = {};
     w[/[12]/.test(a[1].toString()) ? "isHard" : "isCore"] = /[23]/.test(
       a[1].toString()
@@ -524,10 +538,10 @@ const getWords = async (bookVal, difficultyVal) => {
   return ws;
 };
 watch(
-  () => [status.book, status.difficulty],
+  () => [status.book, status.difficulty, status.step],
   async (a) => {
     loading.value = true;
-    words.value = await getWords(a[0], a[1]);
+    words.value = await getWords(a[0], a[1], a[2]);
     loading.value = false;
   }
 );
