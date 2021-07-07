@@ -401,6 +401,13 @@ export default {
       try {
         playIdx.first = lastIdx.value;
         while (played.value) {
+          if (lastIdx.value === words.value.length) {
+            playIdx.last = lastIdx.value - 1;
+            lastIdx.value = 0;
+            played.value = false;
+            await nextTick();
+            break;
+          }
           w = words.value[lastIdx.value];
           if (!w.willPlay) {
             lastIdx.value++;
@@ -458,6 +465,7 @@ export default {
         loading.value = true;
         for (let i = playIdx.first; i <= playIdx.last; i++) {
           w = words.value[i];
+          if (!w.willPlay) continue;
           if (w.isKnow !== 1) continue;
           let wc = w.wordCheck;
           wc.nextRound = round.value + wc.knowCnt + 1;
