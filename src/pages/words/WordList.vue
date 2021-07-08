@@ -159,7 +159,21 @@
                       </div>
                     </div>
                     <div class="col-4 text-right" style="padding-right: 15px">
-                      <div class="ht21"></div>
+                      <div class="ht21">
+                        <q-badge
+                          v-show="step === '1-5' && item.focused"
+                          outline
+                          align="middle"
+                          color="white"
+                        >
+                          {{
+                            item.beginner2_loc.replace(
+                              /^0*([1-9][0-9]*)-0*([1-9][0-9]*)/,
+                              "$1page $2"
+                            )
+                          }}
+                        </q-badge>
+                      </div>
                       <div class="text-h5 ht32">
                         &nbsp;
                         <span v-show="item.display.word">{{ item.word }}</span>
@@ -179,9 +193,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="item.display.category">{{
-                          item.category || "" !== "" ? `[${item.category}]` : ""
-                        }}</span>
+                        <span v-show="item.display.category">
+                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
+                        </span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -252,9 +266,9 @@
               @click="gotoLastIdx"
               color="primary"
             />
-            <q-badge v-show="played" outline align="middle" color="white">
-              {{ txtTimes }}
-            </q-badge>
+            <q-badge v-show="played" outline align="middle" color="white">{{
+              txtTimes
+            }}</q-badge>
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -416,6 +430,7 @@ export default {
 
           isKnow.value = 0;
           disableKnow.value = true;
+          await nextTick();
           await new Promise((resolve, reject) => {
             w.audio.addEventListener("ended", () => {
               disableKnow.value = false;
@@ -450,7 +465,6 @@ export default {
           w.visibility = false;
           playIdx.last = lastIdx.value;
           lastIdx.value++;
-          await nextTick();
           if (words.value.length === lastIdx.value) {
             played.value = false;
             lastIdx.value = 0;
@@ -475,7 +489,7 @@ export default {
           await db.checkWords.bulkPut(await db.checkingWords.toArray());
           await db.checkingWords.clear();
           round.value++;
-          words.value = await getWords(book.value, difficulty.value);
+          words.value = await getWords(book.value, difficulty.value, step.value);
         }
         await db.playedTimes.put(
           Object.assign(
