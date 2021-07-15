@@ -105,7 +105,7 @@
     </q-drawer>
     <q-page-container>
       <q-page>
-        <div class="row" style="height: 90vh">
+        <div class="row" style="height: calc(100vh-55px)">
           <q-virtual-scroll
             ref="virtualListRef"
             component="q-list"
@@ -253,9 +253,13 @@
                   </div>
                   <div class="row" v-show="item.sentence && item.sentence !== ''">
                     <div class="col-6 text-right" style="padding-right: 30px">
-                      {{ item.sentence }}
+                      <span v-show="item.display.sentence">{{ item.sentence }}</span>
                     </div>
-                    <div class="col-6">{{ item.translation }}</div>
+                    <div class="col-6">
+                      <span v-show="item.display.translation">
+                        {{ item.translation }}
+                      </span>
+                    </div>
                   </div>
                 </q-item-section>
               </q-item>

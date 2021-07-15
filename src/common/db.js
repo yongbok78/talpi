@@ -59,6 +59,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -68,6 +70,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "1-2": {
@@ -79,6 +83,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -88,6 +94,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "1-3": {
@@ -99,6 +107,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -108,6 +118,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "1-4": {
@@ -119,6 +131,8 @@ const displays = {
       hint: false,
       meaning: false,
       meaning2: false,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -128,6 +142,8 @@ const displays = {
       hint: false,
       meaning: false,
       meaning2: false,
+      sentence: true,
+      translation: true,
     },
   },
   "1-5": {
@@ -139,6 +155,8 @@ const displays = {
       hint: false,
       meaning: false,
       meaning2: false,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -148,6 +166,8 @@ const displays = {
       hint: false,
       meaning: false,
       meaning2: false,
+      sentence: true,
+      translation: true,
     },
   },
   "1-6": {
@@ -159,6 +179,8 @@ const displays = {
       hint: false,
       meaning: false,
       meaning2: false,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: false,
@@ -168,6 +190,8 @@ const displays = {
       hint: false,
       meaning: false,
       meaning2: false,
+      sentence: true,
+      translation: true,
     },
   },
   "2-1": {
@@ -179,6 +203,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -188,6 +214,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "2-2": {
@@ -199,6 +227,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -208,6 +238,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "2-2a": {
@@ -219,6 +251,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -228,6 +262,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "2-3": {
@@ -239,6 +275,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -248,6 +286,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "2-4": {
@@ -259,6 +299,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -268,6 +310,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "2-5": {
@@ -279,6 +323,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -288,6 +334,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
   "k-e": {
@@ -299,6 +347,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
     focus: {
       word: true,
@@ -308,6 +358,8 @@ const displays = {
       hint: true,
       meaning: true,
       meaning2: true,
+      sentence: true,
+      translation: true,
     },
   },
 };
@@ -484,17 +536,16 @@ const getWords = async (bookVal, difficultyVal, stepVal) => {
     ).map((o) => o.wordId);
     if (wordIds.length > 0) col = db.words.where("id").anyOf(wordIds);
     else col = db.words.toCollection();
-  } else if (a[1] !== 0) {
-    let w = {};
-    w[/[12]/.test(a[1].toString()) ? "isHard" : "isCore"] = /[23]/.test(
-      a[1].toString()
-    )
-      ? "Y"
-      : "N";
-    col = db.words.where(w);
   } else col = db.words.toCollection();
   // 전체 조회
-  const ws = await col.sortBy(`${a[0]}_loc`);
+  let ws = await col.sortBy(`${a[0]}_loc`);
+  if (a[1] !== 0) {
+    let k = "isHard",
+      v = "Y";
+    if (a[1] === 3 || a[1] === 4) k = "isCore";
+    if (a[1] === 1 || a[1] === 4) v = "N";
+    ws = ws.filter((w) => w[k] === v);
+  }
   let wc = {
     book: status.book,
     step: status.step,
