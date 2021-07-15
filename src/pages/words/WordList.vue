@@ -161,7 +161,7 @@
                     <div class="col-4 text-right" style="padding-right: 15px">
                       <div class="ht21">
                         <q-badge
-                          v-show="step === '1-5' && item.focused"
+                          v-show="step === '1-5'"
                           outline
                           align="middle"
                           color="white"
@@ -251,6 +251,12 @@
                       </q-btn>
                     </div>
                   </div>
+                  <div class="row" v-show="item.sentence && item.sentence !== ''">
+                    <div class="col-6 text-right" style="padding-right: 30px">
+                      {{ item.sentence }}
+                    </div>
+                    <div class="col-6">{{ item.translation }}</div>
+                  </div>
                 </q-item-section>
               </q-item>
             </template>
@@ -298,6 +304,21 @@
       <q-input label="힌트" v-model="editorInfo.word.hint" />
       <q-input label="의미" v-model="editorInfo.word.meaning" />
       <q-input label="의미2" v-model="editorInfo.word.meaning2" />
+    </div>
+    <div class="row" style="margin: 20px">
+      <q-input label="반복여부" v-model="editorInfo.word.duplication" class="col-1" />
+      <q-input
+        label="문장"
+        type="textarea"
+        v-model="editorInfo.word.sentence"
+        class="col-5"
+      />
+      <q-input
+        label="번역"
+        type="textarea"
+        v-model="editorInfo.word.translation"
+        class="col-5"
+      />
       <q-btn flat size="md" icon="check" @click="saveWord(editorInfo.word)" />
     </div>
   </div>
@@ -590,7 +611,9 @@ export default {
           if (nm === "words") {
             for (let w of datas) {
               for (let k in w) {
-                if (typeof w[k] === "string" && w[k].indexOf("'") > 0) w[k] = "'" + w[k];
+                if (/^(word|sentence|duplication)/.test(w[k].toString()))
+                  w[k] = w[k].substr(1);
+                else if (w[k].toString().indexOf("'") > 0) w[k] = "'" + w[k];
               }
             }
           }

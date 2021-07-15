@@ -317,7 +317,7 @@ db.version(1).stores({
   finalStatus: `&id, book, step, difficulty, wordGap, lastIdx, round, auto, unitCnt`,
   baseStatuses: `&id, [book+step+difficulty], wordGap, lastIdx, round, auto, unitCnt`,
   lastStatuses: `&id, [book+step+difficulty], wordGap, lastIdx, round, auto, unitCnt`,
-  words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, unit, isHard, isCore`,
+  words: `&id, word, word2, partOfSpeech, category, hint, meaning, meaning2, beginner_loc, beginner2_loc, unit, isHard, isCore, duplication, sentence, translation`,
   checkingWords: `[wordId+book+step+difficulty], knowCnt, nextRound`,
   checkWords: `[wordId+book+step+difficulty], knowCnt, nextRound`,
   playedTimes: "[book+step+difficulty+round], seconds, minutes, hours, days",
