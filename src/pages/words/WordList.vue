@@ -193,9 +193,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="item.display.category">
-                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
-                        </span>
+                        <span v-show="item.display.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -252,13 +252,13 @@
                     </div>
                   </div>
                   <div class="row" v-show="item.sentence && item.sentence !== ''">
-                    <div class="col-6 text-right" style="padding-right: 30px">
+                    <div class="col-6 text-right text-h5" style="padding-right: 30px">
                       <span v-show="item.display.sentence">{{ item.sentence }}</span>
                     </div>
-                    <div class="col-6">
-                      <span v-show="item.display.translation">
-                        {{ item.translation }}
-                      </span>
+                    <div class="col-6 text-h5">
+                      <span v-show="item.display.translation">{{
+                        item.translation
+                      }}</span>
                     </div>
                   </div>
                 </q-item-section>
@@ -276,9 +276,9 @@
               @click="gotoLastIdx"
               color="primary"
             />
-            <q-badge v-show="played" outline align="middle" color="white">{{
-              txtTimes
-            }}</q-badge>
+            <q-badge v-show="played" outline align="middle" color="white">
+              {{ txtTimes }}
+            </q-badge>
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -615,8 +615,7 @@ export default {
           if (nm === "words") {
             for (let w of datas) {
               for (let k in w) {
-                if (/^(word|sentence|duplication)/.test(w[k].toString()))
-                  w[k] = w[k].substr(1);
+                if (/^(word|sentence|translation)/.test(k)) w[k] = w[k].replace(/^'/, "");
                 else if (w[k].toString().indexOf("'") > 0) w[k] = "'" + w[k];
               }
             }
