@@ -105,14 +105,14 @@
     </q-drawer>
     <q-page-container>
       <q-page>
-        <div class="row" style="height: calc(100vh-55px)">
+        <div class="row">
           <q-virtual-scroll
             ref="virtualListRef"
             component="q-list"
             :items="words"
             separator
             class="col"
-            style="height: inherit"
+            style="height: calc(100vh - 50px)"
           >
             <template v-slot="{ item, index }">
               <q-item :class="{ 'bg-blue-grey glossy': item.focused }" :key="item.id">
@@ -193,9 +193,9 @@
                     </div>
                     <div class="col" style="padding-left: 35px">
                       <div class="ht21">
-                        <span v-show="item.display.category">
-                          {{ item.category || "" !== "" ? `[${item.category}]` : "" }}
-                        </span>
+                        <span v-show="item.display.category">{{
+                          item.category || "" !== "" ? `[${item.category}]` : ""
+                        }}</span>
                         <span v-show="item.display.hint">{{ item.hint }}</span>
                       </div>
                       <div class="text-h5 ht32">
@@ -256,9 +256,9 @@
                       <span v-show="item.display.sentence">{{ item.sentence }}</span>
                     </div>
                     <div class="col-6">
-                      <span v-show="item.display.translation">
-                        {{ item.translation }}
-                      </span>
+                      <span v-show="item.display.translation">{{
+                        item.translation
+                      }}</span>
                     </div>
                   </div>
                 </q-item-section>
@@ -276,9 +276,9 @@
               @click="gotoLastIdx"
               color="primary"
             />
-            <q-badge v-show="played" outline align="middle" color="white">{{
-              txtTimes
-            }}</q-badge>
+            <q-badge v-show="played" outline align="middle" color="white">
+              {{ txtTimes }}
+            </q-badge>
             <q-btn
               fab
               :icon="played ? 'pause' : 'play_arrow'"
@@ -375,8 +375,10 @@ export default {
       set: (v) => (lastIdx.value = v < 1 ? 0 : v - 1),
     });
     const virtualListRef = ref(null);
-    const gotoLastIdx = () =>
+    const gotoLastIdx = () => {
+      console.log("gotoLastIdx", lastIdx.value, virtualListRef.value);
       virtualListRef.value.scrollTo(lastIdx.value, "center-force");
+    };
 
     watch(words, (ws) => {
       setTimeout(() => {
