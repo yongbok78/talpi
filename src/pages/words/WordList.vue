@@ -105,14 +105,14 @@
     </q-drawer>
     <q-page-container>
       <q-page>
-        <div class="row" style="height: calc(100vh-55px)">
+        <div class="row">
           <q-virtual-scroll
             ref="virtualListRef"
             component="q-list"
             :items="words"
             separator
             class="col"
-            style="height: inherit"
+            style="height: calc(100vh - 50px)"
           >
             <template v-slot="{ item, index }">
               <q-item :class="{ 'bg-blue-grey glossy': item.focused }" :key="item.id">
@@ -255,7 +255,7 @@
                     <div class="col-6 text-right text-h5" style="padding-right: 30px">
                       <span v-show="item.display.sentence">{{ item.sentence }}</span>
                     </div>
-                    <div class="col-6 text-h5">
+                    <div class="col-6">
                       <span v-show="item.display.translation">{{
                         item.translation
                       }}</span>
@@ -375,8 +375,10 @@ export default {
       set: (v) => (lastIdx.value = v < 1 ? 0 : v - 1),
     });
     const virtualListRef = ref(null);
-    const gotoLastIdx = () =>
+    const gotoLastIdx = () => {
+      console.log("gotoLastIdx", lastIdx.value, virtualListRef.value);
       virtualListRef.value.scrollTo(lastIdx.value, "center-force");
+    };
 
     watch(words, (ws) => {
       setTimeout(() => {
